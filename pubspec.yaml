@@ -1,0 +1,61 @@
+name: noor_quran
+description: "Noor — a complete, fluid Qur'an app: embedded Qur'an, translations, tafsir, qiblah, duas, tasbih and a Qur'anify-style murottal player with YouTube."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State
+  provider: ^6.1.5
+
+  # Audio / murottal
+  just_audio: ^0.10.6
+  just_audio_background: ^0.0.1-beta.17
+  audio_session: ^0.2.4
+
+  # YouTube murottal
+  youtube_player_iframe: ^6.0.2
+
+  # Qiblah / location
+  geolocator: ^14.1.1
+  flutter_compass: ^0.8.1
+
+  # Prayer times
+  adhan: ^2.0.0+1
+
+  # Persistence
+  shared_preferences: ^2.5.5
+
+  # Utilities
+  intl: ^0.20.3
+  share_plus: ^13.3.0
+  url_launcher: ^6.3.2
+  scrollable_positioned_list: ^0.3.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/data/
+  fonts:
+    - family: Amiri
+      fonts:
+        - asset: assets/fonts/Amiri-Regular.ttf
+        - asset: assets/fonts/Amiri-Bold.ttf
+          weight: 700
+    - family: AmiriQuran
+      fonts:
+        - asset: assets/fonts/AmiriQuran-Regular.ttf
+    - family: ScheherazadeNew
+      fonts:
+        - asset: assets/fonts/ScheherazadeNew-Regular.ttf
