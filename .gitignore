@@ -58,6 +58,7 @@ app.*.map.json
 # Local build outputs / store artifacts (regenerated, too large for git)
 /build/
 /dist/
-/store/screenshots/
 /store/shot.js
+/store/screenshots/_labels.txt
+/store/screenshots/_ax.txt
 node_modules/

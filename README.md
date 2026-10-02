@@ -8,6 +8,21 @@ embeds YouTube recitations.
 
 Targets **Web, Android, and iOS** from a single Flutter codebase.
 
+## Live
+
+- **Web app:** https://noor-quran-wheat.vercel.app
+- **Android:** release `.aab` (Play Store) + `.apk` — signed, package `com.darrenlieu.noor_quran`
+
+## Screenshots
+
+| Home | Qur'an | Qiblah |
+| ---- | ------ | ------ |
+| ![Home](store/screenshots/01-home.png) | ![Surah list](store/screenshots/02-surah-list.png) | ![Qiblah](store/screenshots/04-qiblah.png) |
+
+| Doa & Dzikir | Asmaul Husna | More |
+| ------------ | ------------ | ---- |
+| ![Doa](store/screenshots/05-doa.png) | ![Asma](store/screenshots/07-asmaul-husna.png) | ![More](store/screenshots/06-more.png) |
+
 ---
 
 ## Stack
