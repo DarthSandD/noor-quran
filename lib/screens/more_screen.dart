@@ -14,10 +14,10 @@ import 'player_screen.dart';
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
-  /// Universal APK (arm64-v8a + armeabi-v7a + x86_64) hosted on GitHub Releases.
-  /// `latest/download` always serves the newest release, so this never goes stale.
+  /// Per-ABI APKs on GitHub Releases. `arm64-v8a` covers virtually every phone
+  /// made since 2015 and is only ~23 MB; the universal build is the fallback.
   static const String androidApkUrl =
-      'https://github.com/DarthSandD/noor-quran/releases/latest/download/NoorQuran-1.0.0.apk';
+      'https://github.com/DarthSandD/noor-quran/releases/latest/download/NoorQuran-1.0.0-arm64-v8a.apk';
   static const String releasesUrl = 'https://github.com/DarthSandD/noor-quran/releases';
 
   static Future<void> openApk(BuildContext context) async {
