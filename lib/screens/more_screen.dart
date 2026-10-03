@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/repository.dart';
 import '../state/settings_provider.dart';
 import '../theme/app_theme.dart';
@@ -12,6 +14,23 @@ import 'player_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
+
+  /// Universal APK (arm64-v8a + armeabi-v7a + x86_64) hosted on GitHub Releases.
+  /// `latest/download` always serves the newest release, so this never goes stale.
+  static const String androidApkUrl =
+      'https://github.com/DarthSandD/noor-quran/releases/latest/download/NoorQuran-1.0.0.apk';
+  static const String releasesUrl = 'https://github.com/DarthSandD/noor-quran/releases';
+
+  static Future<void> openApk(BuildContext context) async {
+    final uri = Uri.parse(androidApkUrl);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak dapat membuka tautan unduhan')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +52,16 @@ class MoreScreen extends StatelessWidget {
             _Tile(icon: Icons.radio_rounded, color: const Color(0xFFE67E22), title: 'Radio Qur\'an', subtitle: '${repo.radios.length} stasiun live', onTap: () => _go(context, const RadioScreen())),
             _Tile(icon: Icons.bookmark_rounded, color: const Color(0xFFC0392B), title: 'Penanda', subtitle: '${settings.bookmarks.length} ayat ditandai', onTap: () => _go(context, const BookmarkScreen())),
             _Tile(icon: Icons.headphones_rounded, color: const Color(0xFF8E44AD), title: 'Pemutar Murottal', subtitle: 'Qari & YouTube', onTap: () => _go(context, const PlayerScreen())),
+          ]),
+          const SizedBox(height: 18),
+          _Group(children: [
+            _Tile(
+              icon: Icons.android_rounded,
+              color: const Color(0xFF3DDC84),
+              title: 'Unduh Aplikasi Android',
+              subtitle: 'APK v1.0.0 • gratis, tanpa iklan',
+              onTap: () => openApk(context),
+            ),
           ]),
           const SizedBox(height: 18),
           Text('Pengaturan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
