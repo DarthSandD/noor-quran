@@ -118,7 +118,9 @@ class QiblahScreen extends StatelessWidget {
               child: ListTile(
                 leading: Icon(Icons.location_on_rounded, color: theme.colorScheme.primary),
                 title: Text(q.locationLabel, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                subtitle: hasLocation ? Text('Jarak ke Ka\'bah ≈ ${q.qiblahDistanceKm.toStringAsFixed(0)} km', style: const TextStyle(fontSize: 12)) : const Text('Lokasi belum diatur', style: TextStyle(fontSize: 12)),
+                subtitle: hasLocation
+                    ? Text('Jarak ke Ka\'bah ≈ ${q.qiblahDistanceKm.toStringAsFixed(0)} km', style: const TextStyle(fontSize: 12))
+                    : const Text('Ketuk untuk mengaktifkan lokasi', style: TextStyle(fontSize: 12)),
                 trailing: q.loading
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : IconButton(icon: const Icon(Icons.my_location_rounded), onPressed: () => q.refreshLocation()),
