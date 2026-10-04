@@ -9,6 +9,7 @@ import 'state/settings_provider.dart';
 import 'state/qiblah_provider.dart';
 import 'state/audio_provider.dart';
 import 'data/repository.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/surah_list_screen.dart';
 import 'screens/qiblah_screen.dart';
@@ -68,6 +69,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+  bool _splashDone = false;
 
   /// Bumped once the extra bundles (duas, asma, reciters, radios) finish loading.
   /// It keys the tab pages so they are rebuilt with the freshly-loaded data:
@@ -95,7 +97,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final shell = Scaffold(
       body: Stack(
         children: [
           IndexedStack(
@@ -122,8 +124,15 @@ class _AppShellState extends State<AppShell> {
           NavigationDestination(icon: Icon(Icons.grid_view_outlined), selectedIcon: Icon(Icons.grid_view_rounded), label: 'Lainnya'),
         ],
       ),
-      // Reserve room so the mini-player never hides content.
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+
+    return AnimatedSwitcher(
+      duration: Motion.slow,
+      switchInCurve: Motion.curve,
+      child: _splashDone
+          ? KeyedSubtree(key: const ValueKey('shell'), child: shell)
+          : SplashScreen(key: const ValueKey('splash'), onDone: () => setState(() => _splashDone = true)),
     );
   }
 }

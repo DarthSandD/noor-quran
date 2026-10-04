@@ -5,6 +5,8 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../models/models.dart';
 import '../state/audio_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/brand.dart';
+import '../widgets/motion.dart';
 import '../widgets/reciter_picker.dart';
 
 class PlayerScreen extends StatefulWidget {
@@ -118,27 +120,59 @@ class _Artwork extends StatelessWidget {
   final Surah? surah;
   final bool playing;
   const _Artwork({required this.surah, required this.playing});
+
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        height: 250,
-        width: 250,
-        decoration: BoxDecoration(
-          gradient: playing ? Grad.gold : Grad.emerald,
-          borderRadius: BorderRadius.circular(34),
-          boxShadow: [BoxShadow(color: (playing ? AppColors.gold : AppColors.emerald).withValues(alpha: 0.45), blurRadius: 46, offset: const Offset(0, 18))],
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              surah?.name ?? '﷽',
-              textAlign: TextAlign.center,
-              textDirection: TextDirection.rtl,
-              style: const TextStyle(fontFamily: 'AmiriQuran', color: Colors.white, fontSize: 44, height: 1.5),
-            ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.94, end: 1.0),
+        duration: Motion.slow,
+        curve: Motion.curve,
+        builder: (_, scale, child) => Transform.scale(scale: scale, child: child),
+        child: AnimatedContainer(
+          duration: Motion.slow,
+          curve: Motion.curve,
+          height: 248,
+          width: 248,
+          decoration: BoxDecoration(
+            gradient: playing ? Grad.goldSheen : Grad.emerald,
+            borderRadius: BorderRadius.circular(36),
+            boxShadow: [
+              BoxShadow(
+                color: (playing ? AppColors.gold : AppColors.emerald).withValues(alpha: playing ? 0.5 : 0.4),
+                blurRadius: playing ? 56 : 40,
+                spreadRadius: playing ? 2 : 0,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -26,
+                bottom: -30,
+                child: Opacity(
+                  opacity: 0.16,
+                  child: NoorMark(size: 170, glow: false, color: playing ? AppColors.emeraldDeep : Colors.white),
+                ),
+              ),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(26),
+                  child: Text(
+                    surah?.name ?? '﷽',
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.rtl,
+                    style: TextStyle(
+                      fontFamily: 'AmiriQuran',
+                      color: playing ? AppColors.emeraldDeep : Colors.white,
+                      fontSize: 46,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -195,24 +229,46 @@ class _Progress extends StatelessWidget {
 class _Controls extends StatelessWidget {
   final AudioProvider audio;
   const _Controls({required this.audio});
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        IconButton(iconSize: 30, icon: const Icon(Icons.skip_previous_rounded, color: Colors.white), onPressed: audio.previous),
-        const SizedBox(width: 12),
-        Container(
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))]),
-          child: IconButton(
-            iconSize: 44,
+        PressScale(
+          scale: 0.88,
+          onTap: audio.previous,
+          child: Container(
             padding: const EdgeInsets.all(12),
-            icon: Icon(audio.playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: AppColors.emeraldDeep),
-            onPressed: audio.toggle,
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 26),
           ),
         ),
-        const SizedBox(width: 12),
-        IconButton(iconSize: 30, icon: const Icon(Icons.skip_next_rounded, color: Colors.white), onPressed: audio.next),
+        const SizedBox(width: 22),
+        PressScale(
+          scale: 0.9,
+          onTap: audio.toggle,
+          child: Container(
+            width: 74,
+            height: 74,
+            decoration: BoxDecoration(
+              gradient: Grad.goldSheen,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.45), blurRadius: 24, offset: const Offset(0, 8))],
+            ),
+            child: Icon(audio.playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: AppColors.emeraldDeep, size: 42),
+          ),
+        ),
+        const SizedBox(width: 22),
+        PressScale(
+          scale: 0.88,
+          onTap: audio.next,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 26),
+          ),
+        ),
       ],
     );
   }

@@ -12,9 +12,6 @@
 # geolocator
 -keep class com.baseflow.geolocator.** { *; }
 
-# permission_handler
--keep class com.baseflow.permissionhandler.** { *; }
-
 # shared_preferences
 -keep class io.flutter.plugins.sharedpreferences.** { *; }
 

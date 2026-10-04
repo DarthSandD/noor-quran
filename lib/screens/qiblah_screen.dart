@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../state/qiblah_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/motion.dart';
 
 class QiblahScreen extends StatelessWidget {
   const QiblahScreen({super.key});
@@ -19,12 +20,10 @@ class QiblahScreen extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 130),
         children: [
-          const Text('Kiblat', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
-          const SizedBox(height: 2),
-          Text('Arah kiblat & waktu shalat', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurface.withValues(alpha: 0.55))),
-          const SizedBox(height: 20),
+          const PageHeader(title: 'Kiblat', subtitle: 'Arah kiblat & waktu shalat'),
+          const SizedBox(height: 8),
           Center(
             child: SizedBox(
               width: 290,
@@ -112,65 +111,79 @@ class QiblahScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          Card(
-            child: ListTile(
-              leading: Icon(Icons.location_on_rounded, color: theme.colorScheme.primary),
-              title: Text(q.locationLabel, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-              subtitle: hasLocation ? Text('Jarak ke Ka\'bah ≈ ${q.qiblahDistanceKm.toStringAsFixed(0)} km', style: const TextStyle(fontSize: 12)) : const Text('Lokasi belum diatur', style: TextStyle(fontSize: 12)),
-              trailing: q.loading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : IconButton(icon: const Icon(Icons.my_location_rounded), onPressed: () => q.refreshLocation()),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                leading: Icon(Icons.location_on_rounded, color: theme.colorScheme.primary),
+                title: Text(q.locationLabel, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                subtitle: hasLocation ? Text('Jarak ke Ka\'bah ≈ ${q.qiblahDistanceKm.toStringAsFixed(0)} km', style: const TextStyle(fontSize: 12)) : const Text('Lokasi belum diatur', style: TextStyle(fontSize: 12)),
+                trailing: q.loading
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : IconButton(icon: const Icon(Icons.my_location_rounded), onPressed: () => q.refreshLocation()),
+              ),
             ),
           ),
           if (q.error != null) ...[
             const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(14)),
-              child: Row(children: [const Icon(Icons.info_outline_rounded, size: 18, color: Colors.orange), const SizedBox(width: 8), Expanded(child: Text(q.error!, style: const TextStyle(fontSize: 12)))]),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(14)),
+                child: Row(children: [const Icon(Icons.info_outline_rounded, size: 18, color: Colors.orange), const SizedBox(width: 8), Expanded(child: Text(q.error!, style: TextStyle(fontSize: 12)))]),
+              ),
             ),
           ],
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              const Text('Waktu Shalat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const Spacer(),
-              DropdownButton<String>(
-                value: q.method,
-                underline: const SizedBox.shrink(),
-                style: TextStyle(fontSize: 12.5, color: theme.colorScheme.primary, fontWeight: FontWeight.w700),
-                items: const [
-                  DropdownMenuItem(value: 'kemenag', child: Text('Kemenag (SG)')),
-                  DropdownMenuItem(value: 'mwl', child: Text('Muslim World League')),
-                  DropdownMenuItem(value: 'makkah', child: Text('Umm al-Qura')),
-                  DropdownMenuItem(value: 'egypt', child: Text('Egyptian')),
-                  DropdownMenuItem(value: 'karachi', child: Text('Karachi')),
-                  DropdownMenuItem(value: 'isna', child: Text('ISNA')),
-                ],
-                onChanged: (v) => v != null ? q.setMethod(v) : null,
-              ),
-            ],
+          const SizedBox(height: 22),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                const Text('Waktu Shalat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                const Spacer(),
+                DropdownButton<String>(
+                  value: q.method,
+                  underline: const SizedBox.shrink(),
+                  style: TextStyle(fontSize: 12.5, color: theme.colorScheme.primary, fontWeight: FontWeight.w700),
+                  items: const [
+                    DropdownMenuItem(value: 'kemenag', child: Text('Kemenag (SG)')),
+                    DropdownMenuItem(value: 'mwl', child: Text('Muslim World League')),
+                    DropdownMenuItem(value: 'makkah', child: Text('Umm al-Qura')),
+                    DropdownMenuItem(value: 'egypt', child: Text('Egyptian')),
+                    DropdownMenuItem(value: 'karachi', child: Text('Karachi')),
+                    DropdownMenuItem(value: 'isna', child: Text('ISNA')),
+                  ],
+                  onChanged: (v) => v != null ? q.setMethod(v) : null,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
-          if (q.prayers.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Center(child: Text('Atur lokasi untuk menampilkan waktu shalat', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)))),
-              ),
-            )
-          else
-            Card(
-              child: Column(
-                children: [
-                  for (final p in q.prayers)
-                    _PrayerRow(
-                      entry: p,
-                      isNext: q.next?.name == p.name,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: q.prayers.isEmpty
+                ? Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Center(child: Text('Atur lokasi untuk menampilkan waktu shalat', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)))),
                     ),
-                ],
-              ),
-            ),
+                  )
+                : Card(
+                    margin: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        for (final p in q.prayers)
+                          _PrayerRow(
+                            entry: p,
+                            isNext: q.next?.name == p.name,
+                          ),
+                      ],
+                    ),
+                  ),
+          ),
         ],
       ),
     );

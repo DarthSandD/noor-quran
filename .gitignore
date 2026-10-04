@@ -61,6 +61,9 @@ app.*.map.json
 /store/shot.js
 /store/screenshots/_labels.txt
 /store/screenshots/_ax.txt
+/store/shots/
+_icon_preview.png
+_dlhost/*.apk
 node_modules/
 android/build/
 android/.gradle/

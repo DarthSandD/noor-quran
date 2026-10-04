@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/repository.dart';
 import '../state/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/motion.dart';
 import 'asma_screen.dart';
 import 'bookmark_screen.dart';
 import 'radio_screen.dart';
@@ -14,11 +15,12 @@ import 'player_screen.dart';
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
-  /// The APK is served from the app's own website (same-origin, no redirects) —
-  /// GitHub's release CDN stalls on many mobile browsers. Falls back to GitHub
-  /// Releases, which also carries the per-ABI and universal builds.
+  /// The APK is served from a dedicated static download host (no service
+  /// worker, no SPA rewrites, no redirects) — the closest thing to the
+  /// "click and it just downloads" behaviour of a normal website. GitHub
+  /// Releases remains the fallback and carries the per-ABI + universal builds.
   static const String androidApkUrl =
-      'https://noor-quran-wheat.vercel.app/download/noor-quran-latest.apk';
+      'https://noor-quran-download.vercel.app/noor-quran.apk';
   static const String releasesUrl = 'https://github.com/DarthSandD/noor-quran/releases';
 
   static Future<void> openApk(BuildContext context) async {
@@ -41,66 +43,124 @@ class MoreScreen extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 130),
         children: [
-          const Text('Lainnya', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
-          const SizedBox(height: 16),
-          _Group(children: [
-            _Tile(icon: Icons.search_rounded, color: const Color(0xFF16A085), title: 'Cari Ayat', subtitle: 'Teks Arab & terjemahan', onTap: () => _go(context, const SearchScreen())),
-            _Tile(icon: Icons.fingerprint_rounded, color: AppColors.gold, title: 'Tasbih Digital', subtitle: 'Dzikir dengan hitungan', onTap: () => _go(context, const TasbihScreen())),
-            _Tile(icon: Icons.diamond_rounded, color: const Color(0xFF2980B9), title: 'Asmaul Husna', subtitle: '99 nama Allah', onTap: () => _go(context, const AsmaScreen())),
-            _Tile(icon: Icons.radio_rounded, color: const Color(0xFFE67E22), title: 'Radio Qur\'an', subtitle: '${repo.radios.length} stasiun live', onTap: () => _go(context, const RadioScreen())),
-            _Tile(icon: Icons.bookmark_rounded, color: const Color(0xFFC0392B), title: 'Penanda', subtitle: '${settings.bookmarks.length} ayat ditandai', onTap: () => _go(context, const BookmarkScreen())),
-            _Tile(icon: Icons.headphones_rounded, color: const Color(0xFF8E44AD), title: 'Pemutar Murottal', subtitle: 'Qari & YouTube', onTap: () => _go(context, const PlayerScreen())),
-          ]),
+          FadeRise(
+            child: PageHeader(
+              title: 'Lainnya',
+              subtitle: "Noor Qur'an v1.0.0",
+              trailing: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(gradient: Grad.goldSheen, borderRadius: BorderRadius.circular(15)),
+                child: const Center(child: Text('نور', style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 22, color: AppColors.emeraldDeep))),
+              ),
+            ),
+          ),
+          FadeRise(
+            delay: const Duration(milliseconds: 60),
+            child: _Group(children: [
+              _Tile(icon: Icons.search_rounded, color: const Color(0xFF16A085), title: 'Cari Ayat', subtitle: 'Teks Arab & terjemahan', onTap: () => _go(context, const SearchScreen())),
+              _Tile(icon: Icons.fingerprint_rounded, color: AppColors.gold, title: 'Tasbih Digital', subtitle: 'Dzikir dengan hitungan', onTap: () => _go(context, const TasbihScreen())),
+              _Tile(icon: Icons.diamond_rounded, color: const Color(0xFF2980B9), title: 'Asmaul Husna', subtitle: '99 nama Allah', onTap: () => _go(context, const AsmaScreen())),
+              _Tile(icon: Icons.radio_rounded, color: const Color(0xFFE67E22), title: 'Radio Qur\'an', subtitle: '${repo.radios.length} stasiun live', onTap: () => _go(context, const RadioScreen())),
+              _Tile(icon: Icons.bookmark_rounded, color: const Color(0xFFC0392B), title: 'Penanda', subtitle: '${settings.bookmarks.length} ayat ditandai', onTap: () => _go(context, const BookmarkScreen())),
+              _Tile(icon: Icons.headphones_rounded, color: const Color(0xFF8E44AD), title: 'Pemutar Murottal', subtitle: 'Qari & YouTube', onTap: () => _go(context, const PlayerScreen())),
+            ]),
+          ),
           const SizedBox(height: 18),
-          _Group(children: [
-            _Tile(
-              icon: Icons.android_rounded,
-              color: const Color(0xFF3DDC84),
-              title: 'Unduh Aplikasi Android',
-              subtitle: 'APK v1.0.0 • gratis, tanpa iklan',
-              onTap: () => openApk(context),
+          FadeRise(
+            delay: const Duration(milliseconds: 110),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: PressScale(
+                onTap: () => openApk(context),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: Grad.emerald,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [BoxShadow(color: AppColors.emeraldDeep.withValues(alpha: 0.3), blurRadius: 22, offset: const Offset(0, 10))],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(14)),
+                        child: const Icon(Icons.android_rounded, color: Colors.white, size: 26),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Unduh Aplikasi Android', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                            SizedBox(height: 3),
+                            Text('APK v1.0.0 • gratis, tanpa iklan', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(gradient: Grad.goldSheen, borderRadius: BorderRadius.circular(13)),
+                        child: const Text('Unduh', style: TextStyle(color: AppColors.emeraldDeep, fontWeight: FontWeight.w800, fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ]),
+          ),
+          const SizedBox(height: 22),
+          FadeRise(
+            delay: const Duration(milliseconds: 150),
+            child: const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text('PENGATURAN', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+            ),
+          ),
+          FadeRise(
+            delay: const Duration(milliseconds: 170),
+            child: _Group(children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.dark_mode_rounded),
+                title: const Text('Mode gelap', style: TextStyle(fontWeight: FontWeight.w600)),
+                value: settings.dark,
+                onChanged: settings.setDark,
+              ),
+              SwitchListTile(
+                secondary: const Icon(Icons.brightness_auto_rounded),
+                title: const Text('Ikuti tema sistem', style: TextStyle(fontWeight: FontWeight.w600)),
+                value: settings.systemTheme,
+                onChanged: settings.setSystemTheme,
+              ),
+              ListTile(
+                leading: const Icon(Icons.translate_rounded),
+                title: const Text('Terjemahan', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(switch (settings.translationId) {
+                  'en.sahih' => 'English — Saheeh International',
+                  'en.arberry' => 'English — Arberry',
+                  _ => 'Bahasa Indonesia (Kemenag)',
+                }, style: const TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => _showTranslationPicker(context, settings),
+              ),
+            ]),
+          ),
           const SizedBox(height: 18),
-          Text('Pengaturan', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-          const SizedBox(height: 8),
-          _Group(children: [
-            SwitchListTile(
-              secondary: const Icon(Icons.dark_mode_rounded),
-              title: const Text('Mode gelap', style: TextStyle(fontWeight: FontWeight.w600)),
-              value: settings.dark,
-              onChanged: settings.setDark,
-            ),
-            SwitchListTile(
-              secondary: const Icon(Icons.brightness_auto_rounded),
-              title: const Text('Ikuti tema sistem', style: TextStyle(fontWeight: FontWeight.w600)),
-              value: settings.systemTheme,
-              onChanged: settings.setSystemTheme,
-            ),
-            ListTile(
-              leading: const Icon(Icons.translate_rounded),
-              title: const Text('Terjemahan', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(switch (settings.translationId) {
-                'en.sahih' => 'English — Saheeh International',
-                'en.arberry' => 'English — Arberry',
-                _ => 'Bahasa Indonesia (Kemenag)',
-              }, style: const TextStyle(fontSize: 12)),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => _showTranslationPicker(context, settings),
-            ),
-          ]),
-          const SizedBox(height: 18),
-          _Group(children: [
-            _Tile(icon: Icons.info_outline_rounded, color: Colors.blueGrey, title: 'Tentang Noor Qur\'an', subtitle: 'Sumber data & lisensi', onTap: () => _about(context)),
-          ]),
-          const SizedBox(height: 20),
+          FadeRise(
+            delay: const Duration(milliseconds: 210),
+            child: _Group(children: [
+              _Tile(icon: Icons.info_outline_rounded, color: Colors.blueGrey, title: 'Tentang Noor Qur\'an', subtitle: 'Sumber data & lisensi', onTap: () => _about(context)),
+            ]),
+          ),
+          const SizedBox(height: 24),
           Center(
             child: Column(
               children: [
-                const Text('نور', style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 40, color: AppColors.emerald)),
-                const SizedBox(height: 4),
+                const Text('نور', style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 38, color: AppColors.emerald)),
+                const SizedBox(height: 2),
                 Text('Noor Qur\'an • v1.0.0', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
               ],
             ),
@@ -168,8 +228,12 @@ class _Group extends StatelessWidget {
   const _Group({required this.children});
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Column(children: children),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Column(children: children),
+      ),
     );
   }
 }

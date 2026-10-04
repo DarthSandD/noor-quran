@@ -11,6 +11,7 @@ Targets **Web, Android, and iOS** from a single Flutter codebase.
 ## Live
 
 - **Web app:** https://noor-quran-wheat.vercel.app
+- **Direct APK download:** https://noor-quran-download.vercel.app/noor-quran.apk (same-origin, no redirects)
 - **Android:** release `.aab` (Play Store) + `.apk` — signed, package `com.darrenlieu.noor_quran`
 
 ## Screenshots
@@ -22,6 +23,25 @@ Targets **Web, Android, and iOS** from a single Flutter codebase.
 | Doa & Dzikir | Asmaul Husna | More |
 | ------------ | ------------ | ---- |
 | ![Doa](store/screenshots/05-doa.png) | ![Asma](store/screenshots/07-asmaul-husna.png) | ![More](store/screenshots/06-more.png) |
+
+---
+
+## Design system
+
+A single, hand-built identity so every screen feels like one product:
+
+| Token | Where | What |
+| ----- | ----- | ---- |
+| `AppColors` / `Grad` | `lib/theme/app_theme.dart` | Deep emerald + antique gold palette, curated gradients, light & dark |
+| `Motion` | `lib/theme/app_theme.dart` | One easing curve (`easeOutCubic`) and three durations (180/320/560 ms) |
+| `FadeRise`, `PressScale`, `NoorCard`, `SectionHeader`, `PageHeader`, `PulseDot` | `lib/widgets/motion.dart` | Shared animation + layout primitives |
+| `NoorMark` | `lib/widgets/brand.dart` | Custom-painted eight-pointed star + crescent emblem, used on splash, headers, player |
+| `SplashScreen` | `lib/screens/splash_screen.dart` | Branded boot animation, cross-fades into the app shell |
+| UI type | Plus Jakarta Sans (`assets/fonts/ui/`) | Weights 400–800; Arabic stays on Amiri Quran |
+
+The launcher icon and all web/PWA icons are generated from one source of
+truth by `python tools/make_icon.py` (emerald radial + gold octagram,
+crescent and star), including Android adaptive-icon foregrounds.
 
 ---
 

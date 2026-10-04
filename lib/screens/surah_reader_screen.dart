@@ -9,6 +9,8 @@ import '../models/models.dart';
 import '../state/settings_provider.dart';
 import '../state/audio_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/brand.dart';
+import '../widgets/motion.dart';
 import '../widgets/reader_settings_sheet.dart';
 import '../widgets/reciter_picker.dart';
 
@@ -221,30 +223,39 @@ class _Header extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [BoxShadow(color: AppColors.emerald.withValues(alpha: 0.28), blurRadius: 20, offset: const Offset(0, 8))],
       ),
-      child: Column(
+      child: Stack(
         children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-              const Spacer(),
-              IconButton(icon: const Icon(Icons.text_fields_rounded, color: Colors.white), onPressed: onSettings),
-              IconButton(icon: const Icon(Icons.headphones_rounded, color: Colors.white), onPressed: onPlay),
-            ],
+          Positioned(
+            right: -20,
+            top: -18,
+            child: Opacity(opacity: 0.12, child: const NoorMark(size: 120, glow: false, color: Colors.white)),
           ),
-          Text(surah.name, style: const TextStyle(fontFamily: 'AmiriQuran', color: Colors.white, fontSize: 34)),
-          const SizedBox(height: 4),
-          Text('Surah ${surah.transliteration}', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
-            child: Text(
-              '${surah.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'} • ${surah.ayahCount} ayat • Surah ke-${surah.number}',
-              style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
-            ),
+          Column(
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Spacer(),
+                  IconButton(icon: const Icon(Icons.text_fields_rounded, color: Colors.white), onPressed: onSettings),
+                  IconButton(icon: const Icon(Icons.headphones_rounded, color: Colors.white), onPressed: onPlay),
+                ],
+              ),
+              Text(surah.name, style: const TextStyle(fontFamily: 'AmiriQuran', color: Colors.white, fontSize: 34)),
+              const SizedBox(height: 4),
+              Text('Surah ${surah.transliteration}', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
+                child: Text(
+                  '${surah.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'} • ${surah.ayahCount} ayat • Surah ke-${surah.number}',
+                  style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -293,47 +304,63 @@ class _AyahTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: Motion.med,
+      curve: Motion.curve,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
-        color: highlighted ? theme.colorScheme.primary.withValues(alpha: 0.10) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(18),
-        border: highlighted ? Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.5), width: 1.4) : null,
+        color: highlighted
+            ? scheme.primary.withValues(alpha: isDark ? 0.16 : 0.09)
+            : (isDark ? AppColors.nightCard : Colors.white),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: highlighted ? scheme.primary.withValues(alpha: 0.55) : scheme.outlineVariant.withValues(alpha: isDark ? 0.9 : 0.65),
+          width: highlighted ? 1.5 : 1,
+        ),
+        boxShadow: (!highlighted && !isDark) ? [BoxShadow(color: AppColors.ink.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(0, 4))] : null,
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+      child: GestureDetector(
         onTap: onTap,
+        behavior: HitTestBehavior.opaque,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Container(
-                  width: 30,
-                  height: 30,
+                  width: 32,
+                  height: 32,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
+                    gradient: highlighted ? Grad.emeraldSoft : null,
+                    color: highlighted ? null : scheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(11),
                   ),
-                  child: Text('${ayah.numberInSurah}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: theme.colorScheme.primary)),
+                  child: Text('${ayah.numberInSurah}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: highlighted ? Colors.white : scheme.primary)),
                 ),
                 const Spacer(),
-                if (ayah.sajda) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)), child: const Text('Sajdah', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold))),
-                const SizedBox(width: 4),
-                GestureDetector(
+                if (ayah.sajda) ...[
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)), child: const Text('Sajdah', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold))),
+                  const SizedBox(width: 6),
+                ],
+                PressScale(
+                  scale: 0.85,
                   onTap: () => settings.toggleBookmark(surah.number, ayah.numberInSurah, surah.transliteration),
-                  child: Icon(
-                    settings.isBookmarked(surah.number, ayah.numberInSurah) ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                    size: 20,
-                    color: settings.isBookmarked(surah.number, ayah.numberInSurah) ? AppColors.gold : theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      settings.isBookmarked(surah.number, ayah.numberInSurah) ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      size: 21,
+                      color: settings.isBookmarked(surah.number, ayah.numberInSurah) ? AppColors.gold : scheme.onSurface.withValues(alpha: 0.35),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Text(
               ayah.text,
               textAlign: TextAlign.right,
@@ -342,30 +369,34 @@ class _AyahTile extends StatelessWidget {
                 fontFamily: settings.arabicFont,
                 fontSize: 27 * settings.arabicScale,
                 height: 2.05,
-                color: theme.colorScheme.onSurface,
+                color: scheme.onSurface,
               ),
             ),
             if (translation != null && translation!.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Divider(height: 1, color: theme.colorScheme.onSurface.withValues(alpha: 0.06)),
+              Divider(height: 1, color: scheme.onSurface.withValues(alpha: 0.06)),
               const SizedBox(height: 10),
-              Text(translation!, style: TextStyle(fontSize: 14.5, height: 1.6, color: theme.colorScheme.onSurface.withValues(alpha: 0.8))),
+              Text(translation!, style: TextStyle(fontSize: 14.5, height: 1.6, color: scheme.onSurface.withValues(alpha: 0.8), fontWeight: FontWeight.w500)),
             ],
             if (tafsir != null && tafsir!.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.22)),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
                       const Icon(Icons.menu_book_rounded, size: 14, color: AppColors.gold),
                       const SizedBox(width: 6),
-                      Text('Tafsir Jalalayn', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+                      Text('Tafsir Jalalayn', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: scheme.onSurface.withValues(alpha: 0.7))),
                     ]),
-                    const SizedBox(height: 6),
-                    Text(tafsir!, style: TextStyle(fontSize: 13.5, height: 1.55, color: theme.colorScheme.onSurface.withValues(alpha: 0.78))),
+                    const SizedBox(height: 7),
+                    Text(tafsir!, style: TextStyle(fontSize: 13.5, height: 1.55, color: scheme.onSurface.withValues(alpha: 0.78))),
                   ],
                 ),
               ),

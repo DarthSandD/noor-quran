@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../data/repository.dart';
 import '../models/models.dart';
 import '../state/settings_provider.dart';
+import '../theme/app_theme.dart';
+import '../widgets/motion.dart';
 import 'surah_reader_screen.dart';
 
 enum _Filter { all, meccan, medinan }
@@ -27,6 +29,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
   @override
   Widget build(BuildContext context) {
     final repo = QuranRepository.instance;
+    final scheme = Theme.of(context).colorScheme;
     final lang = context.watch<SettingsProvider>().translationId.startsWith('id') ? 'id' : 'en';
     var list = repo.surahs;
     if (_filter == _Filter.meccan) list = list.where((s) => s.revelation == 'Meccan').toList();
@@ -44,16 +47,7 @@ class _SurahListScreenState extends State<SurahListScreen> {
       bottom: false,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
-            child: Row(
-              children: [
-                const Text("Al-Qur'an", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
-                const Spacer(),
-                Text('${list.length} surah', style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
-              ],
-            ),
-          ),
+          PageHeader(title: "Al-Qur'an", subtitle: '${list.length} surah • 6.236 ayat'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
@@ -61,17 +55,19 @@ class _SurahListScreenState extends State<SurahListScreen> {
               onChanged: (v) => setState(() => _query = v),
               decoration: InputDecoration(
                 hintText: 'Cari surah…',
-                prefixIcon: const Icon(Icons.search_rounded),
+                prefixIcon: const Icon(Icons.search_rounded, size: 21),
                 suffixIcon: _query.isEmpty
                     ? null
-                    : IconButton(icon: const Icon(Icons.close_rounded), onPressed: () { _controller.clear(); setState(() => _query = ''); }),
+                    : IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () { _controller.clear(); setState(() => _query = ''); }),
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 38,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
                 _chip('Semua', _Filter.all),
                 const SizedBox(width: 8),
@@ -81,16 +77,31 @@ class _SurahListScreenState extends State<SurahListScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
-              itemCount: list.length,
-              itemBuilder: (_, i) {
-                final s = list[i];
-                return _SurahTile(surah: s, lang: lang);
-              },
-            ),
+            child: list.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search_off_rounded, size: 44, color: scheme.onSurface.withValues(alpha: 0.25)),
+                        const SizedBox(height: 10),
+                        Text('Surah tidak ditemukan', style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 130),
+                    itemCount: list.length,
+                    itemBuilder: (_, i) {
+                      final s = list[i];
+                      return FadeRise(
+                        delay: Duration(milliseconds: (i % 12) * 25),
+                        duration: const Duration(milliseconds: 380),
+                        child: _SurahTile(surah: s, lang: lang),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -99,10 +110,25 @@ class _SurahListScreenState extends State<SurahListScreen> {
 
   Widget _chip(String label, _Filter f) {
     final selected = _filter == f;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => setState(() => _filter = f),
+    final scheme = Theme.of(context).colorScheme;
+    return PressScale(
+      onTap: () => setState(() => _filter = f),
+      child: AnimatedContainer(
+        duration: Motion.med,
+        curve: Motion.curve,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        decoration: BoxDecoration(
+          gradient: selected ? Grad.emeraldSoft : null,
+          color: selected ? null : scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: selected ? Colors.white : scheme.onSurface.withValues(alpha: 0.8)),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -114,36 +140,39 @@ class _SurahTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
     final name = lang == 'id' ? surah.nameId : surah.nameEn;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SurahReaderScreen(surahNumber: surah.number))),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                _NumberBadge(number: surah.number),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(surah.transliteration, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                      const SizedBox(height: 2),
-                      Text('$name • ${surah.ayahCount} ayat • ${surah.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'}',
-                          style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurface.withValues(alpha: 0.55))),
-                    ],
-                  ),
+      padding: const EdgeInsets.only(bottom: 9),
+      child: PressScale(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SurahReaderScreen(surahNumber: surah.number))),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.nightCard : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+            boxShadow: isDark ? null : [BoxShadow(color: AppColors.ink.withValues(alpha: 0.035), blurRadius: 12, offset: const Offset(0, 4))],
+          ),
+          child: Row(
+            children: [
+              _NumberBadge(number: surah.number),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(surah.transliteration, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.2)),
+                    const SizedBox(height: 3),
+                    Text('$name • ${surah.ayahCount} ayat • ${surah.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'}',
+                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: scheme.onSurface.withValues(alpha: 0.55))),
+                  ],
                 ),
-                Text(surah.name, style: const TextStyle(fontFamily: 'AmiriQuran', fontSize: 22)),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Text(surah.name, style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 23, color: scheme.primary.withValues(alpha: 0.9))),
+            ],
           ),
         ),
       ),
@@ -154,18 +183,23 @@ class _SurahTile extends StatelessWidget {
 class _NumberBadge extends StatelessWidget {
   final int number;
   const _NumberBadge({required this.number});
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      width: 40,
-      height: 40,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Icon(Icons.hexagon_outlined, color: theme.colorScheme.primary.withValues(alpha: 0.4), size: 40),
-          Text('$number', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: theme.colorScheme.primary)),
-        ],
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [scheme.primary.withValues(alpha: 0.16), scheme.primary.withValues(alpha: 0.06)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Center(
+        child: Text('$number', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: scheme.primary)),
       ),
     );
   }

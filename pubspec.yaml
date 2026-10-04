@@ -48,6 +48,18 @@ flutter:
   assets:
     - assets/data/
   fonts:
+    - family: Jakarta
+      fonts:
+        - asset: assets/fonts/ui/PlusJakartaSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/ui/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/ui/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/ui/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/ui/PlusJakartaSans-ExtraBold.ttf
+          weight: 800
     - family: Amiri
       fonts:
         - asset: assets/fonts/Amiri-Regular.ttf

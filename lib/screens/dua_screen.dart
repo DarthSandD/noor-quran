@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../data/repository.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../widgets/motion.dart';
 
 class DuaScreen extends StatefulWidget {
   const DuaScreen({super.key});
@@ -23,23 +24,13 @@ class _DuaScreenState extends State<DuaScreen> {
   @override
   Widget build(BuildContext context) {
     final segments = QuranRepository.instance.duaSegments;
-    final theme = Theme.of(context);
+    final total = segments.fold<int>(0, (a, s) => a + s.categories.fold<int>(0, (b, c) => b + c.titles.fold<int>(0, (d, t) => d + t.duas.length)));
     final q = _query.toLowerCase().trim();
     return SafeArea(
       bottom: false,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
-            child: Row(
-              children: [
-                const Text('Doa & Dzikir', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.6)),
-                const Spacer(),
-                Text('${segments.fold<int>(0, (a, s) => a + s.categories.fold<int>(0, (b, c) => b + c.titles.fold<int>(0, (d, t) => d + t.duas.length)))} doa',
-                    style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
-              ],
-            ),
-          ),
+          PageHeader(title: 'Doa & Dzikir', subtitle: '$total doa • Hisnul Muslim'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
@@ -47,12 +38,12 @@ class _DuaScreenState extends State<DuaScreen> {
               onChanged: (v) => setState(() => _query = v),
               decoration: InputDecoration(
                 hintText: 'Cari doa…',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _query.isEmpty ? null : IconButton(icon: const Icon(Icons.close_rounded), onPressed: () { _controller.clear(); setState(() => _query = ''); }),
+                prefixIcon: const Icon(Icons.search_rounded, size: 21),
+                suffixIcon: _query.isEmpty ? null : IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () { _controller.clear(); setState(() => _query = ''); }),
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Expanded(
             child: q.isEmpty
                 ? _Segments(segments: segments)
@@ -67,26 +58,31 @@ class _DuaScreenState extends State<DuaScreen> {
 class _Segments extends StatelessWidget {
   final List<DuaSegment> segments;
   const _Segments({required this.segments});
+
   @override
   Widget build(BuildContext context) {
     final colors = [const Color(0xFF16A085), const Color(0xFF2980B9), const Color(0xFF8E44AD), const Color(0xFFE67E22), const Color(0xFFC0392B), const Color(0xFFD4AF37), const Color(0xFF27AE60)];
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 130),
       itemCount: segments.length,
       itemBuilder: (_, i) {
         final s = segments[i];
         final count = s.categories.fold<int>(0, (a, c) => a + c.titles.fold<int>(0, (b, t) => b + t.duas.length));
         final color = colors[i % colors.length];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Material(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
+        return FadeRise(
+          delay: Duration(milliseconds: 45 * i),
+          duration: const Duration(milliseconds: 400),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: PressScale(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _CategoryList(segment: s))),
-              child: Padding(
+              child: Container(
                 padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: color.withValues(alpha: 0.18)),
+                ),
                 child: Row(
                   children: [
                     Container(
@@ -99,13 +95,13 @@ class _Segments extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(_idName(s.name), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                          const SizedBox(height: 2),
-                          Text('${s.categories.length} kategori • $count doa', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
+                          Text(_idName(s.name), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: -0.3)),
+                          const SizedBox(height: 3),
+                          Text('${s.categories.length} kategori • $count doa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded),
+                    Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.7)),
                   ],
                 ),
               ),
