@@ -26,6 +26,9 @@ dependencies:
   geolocator: ^14.1.1
   flutter_compass: ^0.8.1
 
+  # Keep screen awake while reciting
+  wakelock_plus: ^1.2.8
+
   # Prayer times
   adhan: ^2.0.0+1
 

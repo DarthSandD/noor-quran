@@ -38,11 +38,17 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     super.initState();
     _loadTranslations();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.initialAyah > 1) {
-        _scroll.jumpTo(index: widget.initialAyah - 1, alignment: 0.1);
+      if (widget.initialAyah > 1 && _scroll.isAttached) {
+        _scroll.jumpTo(index: _listIndex(widget.initialAyah - 1), alignment: 0.1);
       }
     });
   }
+
+  /// Maps a 0-based ayah index to its row in the list.
+  ///
+  /// The Basmalah is rendered as its own header row at index 0 for the 112
+  /// surahs that carry it, so every ayah shifts down by one.
+  int _listIndex(int ayahIndex) => ayahIndex + (surah.bismillah ? 1 : 0);
 
   Future<void> _loadTranslations() async {
     final repo = QuranRepository.instance;
@@ -75,7 +81,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
         _lastAutoScrolled = idx;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scroll.isAttached) {
-            _scroll.scrollTo(index: idx, duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic, alignment: 0.28);
+            _scroll.scrollTo(index: _listIndex(idx), duration: const Duration(milliseconds: 500), curve: Curves.easeOutCubic, alignment: 0.28);
           }
         });
       }

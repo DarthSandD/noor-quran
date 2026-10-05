@@ -68,4 +68,7 @@ node_modules/
 android/build/
 android/.gradle/
 android/local.properties
-android/.idea/
+android/.idea/# QA scratch
+_quran.bak.json
+store/qa/
+store/shots/

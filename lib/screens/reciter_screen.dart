@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -116,7 +118,10 @@ class ReciterScreen extends StatelessWidget {
                   IconButton.filledTonal(
                     tooltip: 'Acak',
                     onPressed: () {
-                      final n = surahs.isEmpty ? 1 : surahs[DateTime.now().millisecond % surahs.length].number;
+                      if (surahs.isEmpty) return;
+                      // A real shuffle: pick from the whole list rather than
+                      // keying off the clock (which repeated for the same ms).
+                      final n = surahs[math.Random().nextInt(surahs.length)].number;
                       settings.setReciter(r.id, r.name, selected.id);
                       audio.playSurah(reciter: r, moshaf: selected, surahNumber: n);
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerScreen()));

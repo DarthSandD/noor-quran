@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -23,14 +24,23 @@ class MoreScreen extends StatelessWidget {
       'https://noor-quran-download.vercel.app/noor-quran.apk';
   static const String releasesUrl = 'https://github.com/DarthSandD/noor-quran/releases';
 
+  /// Opens the APK download.
+  ///
+  /// The launch mode matters per platform: `externalApplication` is what makes
+  /// Android hand the URL to the browser/download manager, but `url_launcher`'s
+  /// web implementation only supports `platformDefault` and would otherwise
+  /// ignore the request. So the mode is chosen by platform.
   static Future<void> openApk(BuildContext context) async {
     final uri = Uri.parse(androidApkUrl);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tidak dapat membuka tautan unduhan')),
-        );
-      }
+    final ok = await launchUrl(
+      uri,
+      mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      webOnlyWindowName: kIsWeb ? '_self' : null,
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka tautan unduhan')),
+      );
     }
   }
 

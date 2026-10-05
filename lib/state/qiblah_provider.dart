@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
@@ -101,6 +102,11 @@ class QiblahProvider extends ChangeNotifier {
 
   void _startCompass() {
     _compassSub?.cancel();
+    // flutter_compass has no web implementation, so listening on web throws a
+    // MissingPluginException on every event. The qiblah bearing still works
+    // from the location; only the live "which way is the phone facing" arrow
+    // is unavailable in a browser.
+    if (kIsWeb) return;
     _compassSub = FlutterCompass.events?.listen((e) {
       if (e.heading != null) {
         _heading = e.heading;

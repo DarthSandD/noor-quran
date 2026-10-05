@@ -21,23 +21,42 @@ class TasbihScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<SettingsProvider>();
     final scheme = Theme.of(context).colorScheme;
-    final idx = (s.tasbihTarget == 33 ? 0 : s.tasbihTarget == 100 ? 2 : 1);
-    final phrase = _phrases[idx];
-    final progress = (s.tasbihCount % s.tasbihTarget) / s.tasbihTarget;
+    final target = s.tasbihTarget;
+    final count = s.tasbihCount;
+    // Cycle through the phrases once per completed round, so the dhikr changes
+    // as the user works — the previous version keyed the phrase off the target
+    // and so never changed.
+    final phrase = _phrases[(count ~/ target) % _phrases.length];
+    final progress = (count % target) / target;
+    final done = count > 0 && count % target == 0;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tasbih Digital'),
         actions: [
-          IconButton(icon: const Icon(Icons.restart_alt_rounded), onPressed: () => s.resetTasbih()),
+          IconButton(
+            icon: const Icon(Icons.restart_alt_rounded),
+            tooltip: 'Reset',
+            onPressed: () => s.resetTasbih(),
+          ),
         ],
       ),
       body: Column(
         children: [
           const SizedBox(height: 14),
-          Text(phrase, style: const TextStyle(fontFamily: 'AmiriQuran', fontSize: 42, color: AppColors.emerald)),
+          AnimatedSwitcher(
+            duration: Motion.med,
+            child: Text(
+              phrase,
+              key: ValueKey(phrase),
+              style: const TextStyle(fontFamily: 'AmiriQuran', fontSize: 42, color: AppColors.emerald),
+            ),
+          ),
           const SizedBox(height: 6),
-          Text('Ketuk lingkaran untuk berdzikir', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: scheme.onSurface.withValues(alpha: 0.5))),
+          Text(
+            done ? 'Putaran selesai — ketuk untuk lanjut' : 'Ketuk lingkaran untuk berdzikir',
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: scheme.onSurface.withValues(alpha: 0.5)),
+          ),
           const Spacer(),
           Center(
             child: SizedBox(
@@ -66,10 +85,15 @@ class TasbihScreen extends StatelessWidget {
                     scale: 0.94,
                     onTap: () {
                       if (s.hapticsEnabled) HapticFeedback.mediumImpact();
+                      // `bumpTasbih` notifies listeners; read the new count from
+                      // the provider afterwards instead of double-vibrating.
                       s.bumpTasbih();
-                      if (s.tasbihCount % s.tasbihTarget == 0) {
-                        HapticFeedback.heavyImpact();
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${s.tasbihTarget} kali selesai — Alhamdulillah')));
+                      final now = s.tasbihCount;
+                      if (now % s.tasbihTarget == 0) {
+                        if (s.hapticsEnabled) HapticFeedback.heavyImpact();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('${s.tasbihTarget} kali selesai — Alhamdulillah')),
+                        );
                       }
                     },
                     child: Container(

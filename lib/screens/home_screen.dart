@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +6,7 @@ import 'dart:ui' as ui;
 import '../theme/app_theme.dart';
 import '../widgets/motion.dart';
 import '../widgets/brand.dart';
+import '../app/app_shell.dart';
 import '../state/settings_provider.dart';
 import '../state/qiblah_provider.dart';
 import '../data/repository.dart';
@@ -13,13 +15,9 @@ import 'surah_reader_screen.dart';
 import 'search_screen.dart';
 import 'murottal_screen.dart';
 import 'reciter_screen.dart';
-import 'surah_list_screen.dart';
 import 'tasbih_screen.dart';
 import 'asma_screen.dart';
 import 'radio_screen.dart';
-import 'qiblah_screen.dart';
-import 'dua_screen.dart';
-import 'more_screen.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -62,7 +60,7 @@ class HomeScreen extends StatelessWidget {
           SliverToBoxAdapter(
             child: FadeRise(
               delay: const Duration(milliseconds: 150),
-              child: SectionHeader('Jelajahi', action: 'Semua', onAction: () => _go(context, const MoreScreen())),
+              child: SectionHeader('Jelajahi', action: 'Semua', onAction: () => _goTab(context, ShellTabs.more)),
             ),
           ),
           SliverToBoxAdapter(child: FadeRise(delay: const Duration(milliseconds: 190), child: const _QuickGrid())),
@@ -96,6 +94,11 @@ class HomeScreen extends StatelessWidget {
 
   static void _go(BuildContext context, Widget page) => Navigator.push(context, MaterialPageRoute(builder: (_) => page));
 }
+
+/// Switches to a top-level tab. Used for the shortcuts whose destination is a
+/// tab body (no `Scaffold`), so the user keeps a working navigation bar and
+/// never lands on a screen with no way back.
+void _goTab(BuildContext context, int index) => ShellTabs.of(context)?.select(index);
 
 class _Greeting extends StatelessWidget {
   final SettingsProvider settings;
@@ -255,12 +258,36 @@ class _ContinueCard extends StatelessWidget {
   }
 }
 
-class _PrayerCard extends StatelessWidget {
+class _PrayerCard extends StatefulWidget {
   final QiblahProvider qiblah;
   const _PrayerCard({required this.qiblah});
 
   @override
+  State<_PrayerCard> createState() => _PrayerCardState();
+}
+
+class _PrayerCardState extends State<_PrayerCard> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // The countdown is derived from DateTime.now(), so it has to be rebuilt on
+    // a timer — otherwise it freezes at whatever it was on the first build.
+    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final qiblah = widget.qiblah;
     final scheme = Theme.of(context).colorScheme;
     final next = qiblah.next;
     String countdown = '--';
@@ -294,7 +321,7 @@ class _PrayerCard extends StatelessWidget {
           if (qiblah.prayers.isEmpty)
             // Compact empty state: one clear line + a single call to action.
             PressScale(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QiblahScreen())),
+              onTap: () => _goTab(context, ShellTabs.qiblah),
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: scheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16)),
@@ -358,12 +385,12 @@ class _QuickGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _QA(Icons.explore_rounded, 'Kiblat', const Color(0xFF16A085), (c) => _go(c, const QiblahScreen())),
+      _QA(Icons.explore_rounded, 'Kiblat', const Color(0xFF16A085), (c) => _goTab(c, ShellTabs.qiblah)),
       _QA(Icons.fingerprint_rounded, 'Tasbih', const Color(0xFFD4AF37), (c) => _go(c, const TasbihScreen())),
-      _QA(Icons.auto_stories_rounded, 'Qur\'an', const Color(0xFF8E44AD), (c) => _go(c, const SurahListScreen())),
+      _QA(Icons.auto_stories_rounded, 'Qur\'an', const Color(0xFF8E44AD), (c) => _goTab(c, ShellTabs.quran)),
       _QA(Icons.diamond_rounded, 'Asmaul Husna', const Color(0xFF2980B9), (c) => _go(c, const AsmaScreen())),
       _QA(Icons.radio_rounded, 'Radio Qur\'an', const Color(0xFFE67E22), (c) => _go(c, const RadioScreen())),
-      _QA(Icons.favorite_rounded, 'Doa & Dzikir', const Color(0xFFC0392B), (c) => _go(c, const DuaScreen())),
+      _QA(Icons.favorite_rounded, 'Doa & Dzikir', const Color(0xFFC0392B), (c) => _goTab(c, ShellTabs.dua)),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

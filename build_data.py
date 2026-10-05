@@ -53,6 +53,37 @@ print("  chapters meta loaded (id/en)")
 
 print("Building quran.json ...")
 BASMALAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"
+
+_HARAKAT = set("\u064B\u064C\u064D\u064E\u064F\u0650\u0651\u0652\u0653\u0654\u0655\u0656\u0657\u0658\u0670\u0640"
+               "\u06D6\u06D7\u06D8\u06D9\u06DA\u06DB\u06DC\u06DD\u06DE\u06DF\u06E0\u06E1\u06E2\u06E3\u06E4"
+               "\u06E5\u06E6\u06E7\u06E8\u06E9\u06EA\u06EB\u06EC\u06ED")
+_ALEF_FORMS = {"\u0622", "\u0623", "\u0625", "\u0671"}
+
+
+def _skeleton(text):
+    """Diacritic-free consonant skeleton, with alef forms unified."""
+    return "".join("\u0627" if c in _ALEF_FORMS else c for c in text if c not in _HARAKAT)
+
+
+def _split_basmalah(ayah, basmalah):
+    """Remove a leading basmalah, tolerating stray harakat. -> (rest, matched)."""
+    skel = _skeleton(basmalah)
+    acc = []
+    for i, c in enumerate(ayah):
+        if c in _HARAKAT:
+            continue
+        acc.append("\u0627" if c in _ALEF_FORMS else c)
+        got = "".join(acc)
+        if got == skel:
+            j = i + 1
+            while j < len(ayah) and ayah[j] in _HARAKAT:
+                j += 1
+            return ayah[j:].strip(), True
+        if not skel.startswith(got):
+            return ayah, False
+    return ayah, False
+
+
 surahs = []
 gidx = 0
 for s in ar:
@@ -72,12 +103,15 @@ for s in ar:
     # The Uthmani source prepends the basmalah to ayah 1 of surahs 2..114
     # (except At-Tawbah/9). Split it out so the UI renders it as a header and
     # ayah 1 keeps only its own words -- the text itself is unchanged.
+    # A few surahs (95, 97) carry a stray shadda in the source basmalah, so the
+    # match is done on a diacritic-stripped skeleton rather than by prefix.
     bismillah = 0
     first = ayahs[0]["t"]
-    if n != 1 and n != 9 and first.startswith(BASMALAH):
-        rest = first[len(BASMALAH):].strip()
-        ayahs[0]["t"] = rest
-        bismillah = 1
+    if n != 1 and n != 9:
+        rest, matched = _split_basmalah(first, BASMALAH)
+        if matched and rest:
+            ayahs[0]["t"] = rest
+            bismillah = 1
     meta_en = ch_en.get(n, {})
     meta_id = ch_id.get(n, {})
     surahs.append({

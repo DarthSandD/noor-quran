@@ -220,8 +220,13 @@ class AudioService {
 
   Future<void> seekToAyah(int ayahIndex) async {
     if (_mode != AudioMode.ayah || ayahIndex < 0) return;
+    // [ayahIndex] is absolute (0-based within the surah), but the queue starts
+    // at the ayah playback began from — so convert before seeking, or tapping a
+    // verse would jump to the wrong one whenever playback started mid-surah.
+    final queueIndex = ayahIndex - _queueAyahOffset;
+    if (queueIndex < 0 || queueIndex >= _ayahQueueLength) return;
     _ayahIndex = ayahIndex;
-    await player.seek(Duration.zero, index: ayahIndex);
+    await player.seek(Duration.zero, index: queueIndex);
   }
 
   /// Jumps to a surah already in the queue (used by the "up next" list).
