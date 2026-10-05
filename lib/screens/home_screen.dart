@@ -11,7 +11,8 @@ import '../data/repository.dart';
 import '../models/models.dart';
 import 'surah_reader_screen.dart';
 import 'search_screen.dart';
-import 'player_screen.dart';
+import 'murottal_screen.dart';
+import 'reciter_screen.dart';
 import 'surah_list_screen.dart';
 import 'tasbih_screen.dart';
 import 'asma_screen.dart';
@@ -70,7 +71,7 @@ class HomeScreen extends StatelessWidget {
               delay: const Duration(milliseconds: 240),
               child: Padding(
                 padding: const EdgeInsets.only(top: 22),
-                child: SectionHeader('Murottal pilihan', action: 'Buka', onAction: () => _go(context, const PlayerScreen())),
+                child: SectionHeader('Murottal pilihan', action: 'Buka', onAction: () => _go(context, const MurottalScreen())),
               ),
             ),
           ),
@@ -453,7 +454,7 @@ class _FeaturedReciters extends StatelessWidget {
           return FadeRise(
             delay: Duration(milliseconds: 40 * i),
             child: PressScale(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PlayerScreen(initialReciterId: r.id))),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ReciterScreen(reciterId: r.id))),
               child: SizedBox(
                 width: 88,
                 child: Column(

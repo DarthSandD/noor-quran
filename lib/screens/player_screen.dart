@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
+import '../data/youtube_library.dart';
 import '../models/models.dart';
 import '../state/audio_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/brand.dart';
 import '../widgets/motion.dart';
-import '../widgets/reciter_picker.dart';
 
 class PlayerScreen extends StatefulWidget {
   final int? initialReciterId;
@@ -295,18 +295,85 @@ class _Extras extends StatelessWidget {
           onTap: audio.cycleSpeed,
         ),
         _Pill(
-          icon: Icons.headphones_rounded,
-          label: 'Qari',
+          icon: Icons.queue_music_rounded,
+          label: '${audio.upNextCount}',
           active: false,
-          onTap: () => showReciterPicker(context, startSurah: audio.service.currentSurah),
+          onTap: () => _showQueue(context, audio),
         ),
       ],
+    );
+  }
+
+  static void _showQueue(BuildContext context, AudioProvider audio) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _QueueSheet(audio: audio),
     );
   }
 
   static String _speedLabel(AudioProvider a) {
     final s = a.speed;
     return '${s.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '')}x';
+  }
+}
+
+/// "Berikutnya" — the rest of the queue, tap to jump. This is the piece that
+/// makes it feel like an album rather than a one-off file.
+class _QueueSheet extends StatelessWidget {
+  final AudioProvider audio;
+  const _QueueSheet({required this.audio});
+
+  @override
+  Widget build(BuildContext context) {
+    final upNext = audio.upNext;
+    final current = audio.currentSurahObj;
+    final baseIndex = (audio.service.queueIndex) + 1;
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      builder: (context, controller) => Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Berikutnya', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+            ),
+          ),
+          if (current != null)
+            ListTile(
+              leading: const Icon(Icons.graphic_eq_rounded),
+              title: Text('Surah ${current.transliteration}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: const Text('Sedang diputar', style: TextStyle(fontSize: 11.5)),
+            ),
+          const Divider(height: 1),
+          Expanded(
+            child: upNext.isEmpty
+                ? const Center(child: Text('Tidak ada antrean berikutnya'))
+                : ListView.builder(
+                    controller: controller,
+                    itemCount: upNext.length,
+                    itemBuilder: (_, i) {
+                      final s = upNext[i];
+                      return ListTile(
+                        dense: true,
+                        leading: Text('${s.number}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                        title: Text(s.transliteration, style: const TextStyle(fontSize: 14)),
+                        subtitle: Text('${s.ayahCount} ayat', style: const TextStyle(fontSize: 11)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          audio.jumpToQueueIndex(baseIndex + i);
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -410,16 +477,7 @@ class _YouTubeTab extends StatefulWidget {
 class _YouTubeTabState extends State<_YouTubeTab> {
   YoutubePlayerController? _controller;
   String? _currentTitle;
-
-  // Curated, freely-available Qur'an recitation videos on YouTube.
-  static const _videos = [
-    ('Surah Al-Fatihah', '7ZlRZ9EhF3o'),
-    ('Surah Yasin', 'lHrx4B8wJgM'),
-    ('Surah Ar-Rahman', 'x1iBcP9wZ6o'),
-    ('Surah Al-Mulk', 'Y5Qm6q5Z3cU'),
-    ('Surah Al-Kahfi', 'Fbc5tq3v5cY'),
-    ('Surah Al-Waqiah', 'g1jR3C6L0zE'),
-  ];
+  bool _isPlaylist = false;
 
   @override
   void dispose() {
@@ -427,16 +485,43 @@ class _YouTubeTabState extends State<_YouTubeTab> {
     super.dispose();
   }
 
-  void _open(String id, String title) {
+  /// Opens a single video, embedded.
+  void _openVideo(YoutubeClip c) {
     setState(() {
       _controller?.close();
       _controller = YoutubePlayerController.fromVideoId(
-        videoId: id,
+        videoId: c.videoId,
         autoPlay: true,
-        params: const YoutubePlayerParams(showFullscreenButton: true, showControls: true, strictRelatedVideos: true),
+        params: const YoutubePlayerParams(
+          showFullscreenButton: true,
+          showControls: true,
+          strictRelatedVideos: true,
+        ),
       );
-      _currentTitle = title;
+      _currentTitle = c.title;
+      _isPlaylist = false;
     });
+  }
+
+  /// Opens a playlist, embedded — it advances continuously inside the app,
+  /// which is the YouTube equivalent of "play album".
+  Future<void> _openPlaylist(YoutubeClip c) async {
+    final old = _controller;
+    final controller = YoutubePlayerController(
+      params: const YoutubePlayerParams(
+        showFullscreenButton: true,
+        showControls: true,
+        strictRelatedVideos: true,
+        loop: true,
+      ),
+    );
+    setState(() {
+      _controller = controller;
+      _currentTitle = c.title;
+      _isPlaylist = true;
+    });
+    old?.close();
+    await controller.loadPlaylist(list: [c.videoId], listType: ListType.playlist, index: 0);
   }
 
   @override
@@ -444,6 +529,7 @@ class _YouTubeTabState extends State<_YouTubeTab> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
       children: [
+        // The embedded player sits at the top and stays while you browse.
         if (_controller != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(18),
@@ -452,35 +538,66 @@ class _YouTubeTabState extends State<_YouTubeTab> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.smart_display_rounded, color: Colors.white54, size: 16),
+              Icon(_isPlaylist ? Icons.playlist_play_rounded : Icons.smart_display_rounded, color: Colors.white54, size: 16),
               const SizedBox(width: 6),
-              Text(_currentTitle ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              Expanded(
+                child: Text(_currentTitle ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              ),
             ],
           ),
           const SizedBox(height: 16),
         ],
-        const Text('Murottal di YouTube', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+
+        const Text('Putar lengkap (playlist)', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
-        const Text('Putar rekaman qari lengkap langsung dari YouTube.', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
-        const SizedBox(height: 14),
-        for (final v in _videos)
-          Card(
-            color: Colors.white.withValues(alpha: 0.07),
-            margin: const EdgeInsets.only(bottom: 10),
-            child: ListTile(
-              onTap: () => _open(v.$2, v.$1),
-              leading: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.play_arrow_rounded, color: Colors.white),
-              ),
-              title: Text(v.$1, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-              subtitle: const Text('YouTube • Ketuk untuk memutar', style: TextStyle(color: Colors.white38, fontSize: 11.5)),
-              trailing: const Icon(Icons.open_in_new_rounded, color: Colors.white38, size: 18),
-            ),
+        const Text('Bersambung otomatis — seperti memutar album.', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
+        const SizedBox(height: 12),
+        for (final c in YoutubeLibrary.playlists)
+          _YtCard(
+            clip: c,
+            badge: Icons.playlist_play_rounded,
+            onTap: () => _openPlaylist(c),
+          ),
+
+        const SizedBox(height: 22),
+        const Text('Rekomendasi', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 4),
+        const Text('Rekaman pilihan dari YouTube.', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
+        const SizedBox(height: 12),
+        for (final c in YoutubeLibrary.clips)
+          _YtCard(
+            clip: c,
+            badge: Icons.play_arrow_rounded,
+            onTap: () => _openVideo(c),
           ),
       ],
+    );
+  }
+}
+
+class _YtCard extends StatelessWidget {
+  final YoutubeClip clip;
+  final IconData badge;
+  final VoidCallback onTap;
+  const _YtCard({required this.clip, required this.badge, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.white.withValues(alpha: 0.07),
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(12)),
+          child: Icon(badge, color: Colors.white),
+        ),
+        title: Text(clip.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5)),
+        subtitle: Text(clip.channel, style: const TextStyle(color: Colors.white38, fontSize: 11.5)),
+        trailing: const Icon(Icons.play_circle_fill_rounded, color: Colors.white38, size: 22),
+      ),
     );
   }
 }

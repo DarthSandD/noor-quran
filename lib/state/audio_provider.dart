@@ -71,8 +71,12 @@ class AudioProvider extends ChangeNotifier {
       _svc.playerStateStream.listen((s) {
         _buffering = s.processingState == ProcessingState.loading ||
             s.processingState == ProcessingState.buffering;
+        // A completed queue item is handled by just_audio's own advance for
+        // surah queues; only ayah mode needs an explicit push to the next surah.
         if (s.processingState == ProcessingState.completed && !_svc.verseRepeat) {
-          if (_svc.mode == AudioMode.ayah) _svc.nextSurah();
+          if (_svc.mode == AudioMode.ayah && !(_svc.playerIfCreated?.hasNext ?? false)) {
+            _svc.nextSurah();
+          }
         }
         if (!_disposed) notifyListeners();
       }),
@@ -91,15 +95,35 @@ class AudioProvider extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  // ------------------------------------------------------------------ playback
+
   Future<void> playSurah({
     required Reciter reciter,
     required Moshaf moshaf,
     required int surahNumber,
+    bool single = false,
   }) async {
     _error = null;
     try {
       await _attach();
-      await _svc.playSurah(reciter: reciter, moshaf: moshaf, surahNumber: surahNumber);
+      await _svc.playSurah(
+        reciter: reciter,
+        moshaf: moshaf,
+        surahNumber: surahNumber,
+        single: single,
+      );
+    } catch (e) {
+      _error = 'Gagal memutar: ${e.toString().split('\n').first}';
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  /// Spotify's "play album": the whole reciter catalogue, from Al-Fatihah.
+  Future<void> playAll({required Reciter reciter, required Moshaf moshaf}) async {
+    _error = null;
+    try {
+      await _attach();
+      await _svc.playAll(reciter: reciter, moshaf: moshaf);
     } catch (e) {
       _error = 'Gagal memutar: ${e.toString().split('\n').first}';
       if (!_disposed) notifyListeners();
@@ -157,6 +181,11 @@ class AudioProvider extends ChangeNotifier {
     await _svc.seekToAyah(i);
   }
 
+  Future<void> jumpToQueueIndex(int index) async {
+    await _attach();
+    await _svc.jumpToQueueIndex(index);
+  }
+
   Future<void> stop() async {
     await _attach();
     await _svc.stop();
@@ -178,6 +207,26 @@ class AudioProvider extends ChangeNotifier {
     await _svc.player.setSpeed(speeds[(i + 1) % speeds.length]);
     if (!_disposed) notifyListeners();
   }
+
+  // -------------------------------------------------------------------- queue
+
+  /// The surahs queued after the current one (the "Berikutnya" list).
+  List<Surah> get upNext {
+    final q = _svc.queue;
+    if (q.isEmpty) return const [];
+    final i = _svc.queueIndex;
+    if (i < 0) return const [];
+    final repo = QuranRepository.instance;
+    return [
+      for (var k = i + 1; k < q.length; k++) repo.surah(q[k]),
+    ];
+  }
+
+  /// How many items remain after the current one.
+  int get upNextCount => upNext.length;
+
+  bool get hasNext => _svc.playerIfCreated?.hasNext ?? false;
+  bool get hasPrevious => _svc.playerIfCreated?.hasPrevious ?? false;
 
   Surah? get currentSurahObj {
     final n = _svc.currentSurah;

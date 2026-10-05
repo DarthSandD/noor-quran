@@ -1,27 +1,32 @@
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
-import '../models/models.dart';
+
 import '../data/repository.dart';
+import '../models/models.dart';
 
-/// Qur'anify-style murottal engine.
+/// Playback source.
 ///
-/// Two modes:
-///  * [AudioMode.surah]  – one mp3 per surah, streamed from an mp3quran server.
-///  * [AudioMode.ayah]   – one mp3 per ayah, streamed from the islamic.network
-///    CDN; a playlist is built so playback flows ayah-by-ayah (verse repeat and
-///    ayah-by-ayah highlighting come for free).
-enum AudioMode { surah, ayah }
+///  * [surah] – one mp3 per surah, streamed from an mp3quran server. The whole
+///    reciter catalogue is loaded as a **queue**, so playback flows from the
+///    chosen surah all the way to An-Nas without interruption (Spotify's
+///    "play album from this track" behaviour).
+///  * [ayah]  – one mp3 per ayah, from the islamic.network CDN, also queued so
+///    verse repeat and ayah highlighting come for free.
+///  * [radio] – a single live stream.
+enum AudioMode { surah, ayah, radio }
 
+/// Murottal engine.
+///
+/// Everything that is "currently playing" lives here, so the UI only has to
+/// watch one object. The engine owns the queue; the player only owns the audio.
 class AudioService {
   AudioService._();
+
   static final AudioService instance = AudioService._();
 
-  /// Created lazily, on first use.
-  ///
-  /// `just_audio_background` requires its `init()` to have completed before an
-  /// [AudioPlayer] is constructed, so the player is not built here (touching
-  /// the singleton must be free); it is built the first time it is needed,
-  /// which is after the background service has signalled readiness.
+  /// Created lazily: `just_audio_background` requires its `init()` to have
+  /// completed before the first [AudioPlayer] exists, so constructing this
+  /// singleton must not touch the player.
   AudioPlayer? _player;
   AudioPlayer get player => _player ??= AudioPlayer();
 
@@ -40,12 +45,21 @@ class AudioService {
   int _ayahIndex = 0;
   int get currentAyahIndex => _ayahIndex;
 
-  int _queueAyahOffset = 0; // ayah index (0-based) that queue position 0 maps to
+  int _queueAyahOffset = 0;
 
-  /// Called by the UI layer when the player's queue index changes.
-  void setCurrentIndexHint(int queueIndex) {
-    if (_mode == AudioMode.ayah) _ayahIndex = _queueAyahOffset + queueIndex;
+  /// Surah numbers in the current surah-mode queue, in play order.
+  List<int> _queue = const [];
+  List<int> get queue => _queue;
+
+  /// Position within [queue] (0-based), or -1 when unknown.
+  int get queueIndex {
+    final i = playerIfCreated?.currentIndex;
+    return i == null || i < 0 ? -1 : i;
   }
+
+  /// How many items are queued (used by the "up next" UI).
+  int get queueLength => _mode == AudioMode.ayah ? _ayahQueueLength : _queue.length;
+  int _ayahQueueLength = 0;
 
   Reciter? _reciter;
   Reciter? get reciter => _reciter;
@@ -56,53 +70,100 @@ class AudioService {
   Radio? _radio;
   Radio? get radio => _radio;
 
-  String? _title;
-  String get title => _title ?? '';
-  String? _subtitle;
-  String get subtitle => _subtitle ?? '';
+  String _title = '';
+  String get title => _title;
+  String _subtitle = '';
+  String get subtitle => _subtitle;
 
   bool _verseRepeat = false;
   bool get verseRepeat => _verseRepeat;
 
-  bool get hasQueue => _title != null;
+  /// True once something is loaded and playable.
+  bool get hasQueue => _title.isNotEmpty;
 
   List<Surah> get _surahs => QuranRepository.instance.surahs;
 
-  Future<void> loadAyahReciters() async {
-    if (_ayahReciters.isNotEmpty) return;
-    _ayahReciters = QuranRepository.instance.ayahReciters;
+  /// Called by the UI when the player's queue index changes.
+  void setCurrentIndexHint(int queueIndex) {
+    if (_mode == AudioMode.surah) {
+      if (queueIndex >= 0 && queueIndex < _queue.length) {
+        _surah = _queue[queueIndex];
+        _refreshSurahTitle();
+      }
+    } else if (_mode == AudioMode.ayah) {
+      _ayahIndex = _queueAyahOffset + queueIndex;
+    }
   }
 
-  /// Called after repository.loadExtras() so ayah reciters are ready.
   void primeAyahReciters() {
     _ayahReciters = QuranRepository.instance.ayahReciters;
   }
 
-  Future<void> playSurah({required Reciter reciter, required Moshaf moshaf, required int surahNumber}) async {
+  // ---------------------------------------------------------------- surah mode
+
+  /// Plays [surahNumber] and **everything after it** for the chosen reciter,
+  /// exactly like starting an album from one track: the queue runs to An-Nas
+  /// and auto-advances. Set [single] to play just the one surah.
+  Future<void> playSurah({
+    required Reciter reciter,
+    required Moshaf moshaf,
+    required int surahNumber,
+    bool single = false,
+  }) async {
     _mode = AudioMode.surah;
     _reciter = reciter;
     _moshaf = moshaf;
-    _surah = surahNumber;
-    _ayahIndex = 0;
     _radio = null;
-    final s = _surahs[surahNumber - 1];
-    _title = 'Surah ${s.transliteration}';
-    _subtitle = '${reciter.name} • ${moshaf.name}';
-    final url = moshaf.surahUrl(surahNumber);
-    await player.setAudioSource(AudioSource.uri(
-      Uri.parse(url),
-      tag: MediaItem(
-        id: url,
-        title: _title!,
-        artist: reciter.name,
-        album: moshaf.name,
-      ),
-    ));
+    _ayahReciter = null;
+    _ayahQueueLength = 0;
+
+    final list = _surahs
+        .where((s) => moshaf.hasSurah(s.number) && (single ? s.number == surahNumber : s.number >= surahNumber))
+        .toList(growable: false);
+    if (list.isEmpty) return;
+
+    _queue = list.map((s) => s.number).toList(growable: false);
+    _surah = _queue.first;
+    _refreshSurahTitle();
+
+    final sources = [
+      for (final s in list)
+        AudioSource.uri(
+          Uri.parse(moshaf.surahUrl(s.number)),
+          tag: MediaItem(
+            id: moshaf.surahUrl(s.number),
+            title: 'Surah ${s.transliteration}',
+            artist: reciter.name,
+            album: moshaf.name,
+          ),
+        ),
+    ];
+
+    await player.setAudioSources(sources, initialIndex: 0, initialPosition: Duration.zero);
     _applyLoop();
     player.play();
   }
 
-  Future<void> playAyahRecitation({required AyahReciter reciter, required int surahNumber, int fromAyah = 1}) async {
+  /// Convenience for "Putar Semua": the whole reciter catalogue from Al-Fatihah.
+  Future<void> playAll({required Reciter reciter, required Moshaf moshaf}) =>
+      playSurah(reciter: reciter, moshaf: moshaf, surahNumber: 1);
+
+  void _refreshSurahTitle() {
+    if (_surah < 1 || _surah > 114) return;
+    final s = _surahs[_surah - 1];
+    _title = 'Surah ${s.transliteration}';
+    _subtitle = _reciter == null
+        ? (_moshaf?.name ?? '')
+        : '${_reciter!.name} • ${_moshaf?.name ?? ''}';
+  }
+
+  // ----------------------------------------------------------------- ayah mode
+
+  Future<void> playAyahRecitation({
+    required AyahReciter reciter,
+    required int surahNumber,
+    int fromAyah = 1,
+  }) async {
     _mode = AudioMode.ayah;
     _ayahReciter = reciter;
     _surah = surahNumber;
@@ -111,40 +172,43 @@ class AudioService {
     _reciter = null;
     _moshaf = null;
     _radio = null;
+    _queue = const [];
+
     final s = _surahs[surahNumber - 1];
     _title = 'Surah ${s.transliteration}';
     _subtitle = reciter.name;
-    await _loadAyahQueue(surahNumber, fromAyah);
-    player.play();
-  }
 
-  Future<void> _loadAyahQueue(int surahNumber, int fromAyah) async {
-    final rec = _ayahReciter!;
-    final s = _surahs[surahNumber - 1];
     final sources = <AudioSource>[];
     for (final a in s.ayahs) {
       if (a.numberInSurah < fromAyah) continue;
       final global = QuranRepository.instance.globalIndex(surahNumber, a.numberInSurah) + 1;
-      final url = 'https://cdn.islamic.network/quran/audio/${rec.bitrate}/${rec.id}/$global.mp3';
+      final url = 'https://cdn.islamic.network/quran/audio/${reciter.bitrate}/${reciter.id}/$global.mp3';
       sources.add(AudioSource.uri(
         Uri.parse(url),
         tag: MediaItem(
           id: url,
           title: 'Surah ${s.transliteration} : ${a.numberInSurah}',
-          artist: rec.name,
+          artist: reciter.name,
         ),
       ));
     }
-    await player.setAudioSources(sources);
+    _ayahQueueLength = sources.length;
+    await player.setAudioSources(sources, initialIndex: 0, initialPosition: Duration.zero);
+    player.play();
   }
 
+  // ---------------------------------------------------------------- radio mode
+
   Future<void> playRadio(Radio r) async {
-    _mode = AudioMode.surah;
+    _mode = AudioMode.radio;
     _radio = r;
-    _title = r.name;
-    _subtitle = "Radio Qur'an • Live";
     _reciter = null;
     _moshaf = null;
+    _ayahReciter = null;
+    _queue = const [];
+    _ayahQueueLength = 0;
+    _title = r.name;
+    _subtitle = "Radio Qur'an • Live";
     await player.setAudioSource(AudioSource.uri(
       Uri.parse(r.url),
       tag: MediaItem(id: r.url, title: r.name, artist: "Radio Qur'an"),
@@ -152,11 +216,19 @@ class AudioService {
     player.play();
   }
 
+  // ------------------------------------------------------------------- control
+
   Future<void> seekToAyah(int ayahIndex) async {
-    if (_mode != AudioMode.ayah) return;
-    if (ayahIndex < 0) return;
+    if (_mode != AudioMode.ayah || ayahIndex < 0) return;
     _ayahIndex = ayahIndex;
     await player.seek(Duration.zero, index: ayahIndex);
+  }
+
+  /// Jumps to a surah already in the queue (used by the "up next" list).
+  Future<void> jumpToQueueIndex(int index) async {
+    if (index < 0 || index >= _queue.length) return;
+    await player.seek(Duration.zero, index: index);
+    player.play();
   }
 
   void setVerseRepeat(bool v) {
@@ -165,7 +237,10 @@ class AudioService {
   }
 
   void _applyLoop() {
-    player.setLoopMode(_verseRepeat ? LoopMode.one : LoopMode.off);
+    // Verse repeat only makes sense per-ayah; for surah queues it would loop
+    // a single surah forever, which is never what the user wants.
+    final loopOne = _verseRepeat && _mode == AudioMode.ayah;
+    player.setLoopMode(loopOne ? LoopMode.one : LoopMode.off);
   }
 
   Future<void> togglePlay() async {
@@ -176,30 +251,45 @@ class AudioService {
     }
   }
 
-  Future<void> nextSurah() async {
-    final n = _surah + 1;
-    if (n > 114) return;
-    if (_mode == AudioMode.surah && _reciter != null && _moshaf != null) {
-      await playSurah(reciter: _reciter!, moshaf: _moshaf!, surahNumber: n);
-    } else if (_mode == AudioMode.ayah && _ayahReciter != null) {
-      await playAyahRecitation(reciter: _ayahReciter!, surahNumber: n);
+  /// Advances within the queue. Returns false at the end of the queue.
+  Future<bool> nextSurah() async {
+    if (_mode == AudioMode.surah) {
+      final p = player;
+      if (p.hasNext) {
+        await p.seekToNext();
+        p.play();
+        return true;
+      }
+      return false;
     }
+    final n = _surah + 1;
+    if (n > 114 || _ayahReciter == null) return false;
+    await playAyahRecitation(reciter: _ayahReciter!, surahNumber: n);
+    return true;
   }
 
-  Future<void> previousSurah() async {
-    final n = _surah - 1;
-    if (n < 1) return;
-    if (_mode == AudioMode.surah && _reciter != null && _moshaf != null) {
-      await playSurah(reciter: _reciter!, moshaf: _moshaf!, surahNumber: n);
-    } else if (_mode == AudioMode.ayah && _ayahReciter != null) {
-      await playAyahRecitation(reciter: _ayahReciter!, surahNumber: n);
+  Future<bool> previousSurah() async {
+    if (_mode == AudioMode.surah) {
+      final p = player;
+      if (p.hasPrevious) {
+        await p.seekToPrevious();
+        p.play();
+        return true;
+      }
+      return false;
     }
+    final n = _surah - 1;
+    if (n < 1 || _ayahReciter == null) return false;
+    await playAyahRecitation(reciter: _ayahReciter!, surahNumber: n);
+    return true;
   }
 
   Future<void> stop() async {
     await player.stop();
-    _title = null;
-    _subtitle = null;
+    _title = '';
+    _subtitle = '';
+    _queue = const [];
+    _ayahQueueLength = 0;
   }
 
   Stream<Duration> get positionStream => player.positionStream;

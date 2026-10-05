@@ -7,10 +7,10 @@ import '../theme/app_theme.dart';
 import '../widgets/motion.dart';
 import 'asma_screen.dart';
 import 'bookmark_screen.dart';
+import 'murottal_screen.dart';
 import 'radio_screen.dart';
 import 'search_screen.dart';
 import 'tasbih_screen.dart';
-import 'player_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -65,7 +65,7 @@ class MoreScreen extends StatelessWidget {
               _Tile(icon: Icons.diamond_rounded, color: const Color(0xFF2980B9), title: 'Asmaul Husna', subtitle: '99 nama Allah', onTap: () => _go(context, const AsmaScreen())),
               _Tile(icon: Icons.radio_rounded, color: const Color(0xFFE67E22), title: 'Radio Qur\'an', subtitle: '${repo.radios.length} stasiun live', onTap: () => _go(context, const RadioScreen())),
               _Tile(icon: Icons.bookmark_rounded, color: const Color(0xFFC0392B), title: 'Penanda', subtitle: '${settings.bookmarks.length} ayat ditandai', onTap: () => _go(context, const BookmarkScreen())),
-              _Tile(icon: Icons.headphones_rounded, color: const Color(0xFF8E44AD), title: 'Pemutar Murottal', subtitle: 'Qari & YouTube', onTap: () => _go(context, const PlayerScreen())),
+              _Tile(icon: Icons.headphones_rounded, color: const Color(0xFF8E44AD), title: 'Pustaka Murottal', subtitle: '${repo.reciters.length} qari • putar berurutan', onTap: () => _go(context, const MurottalScreen())),
             ]),
           ),
           const SizedBox(height: 18),
