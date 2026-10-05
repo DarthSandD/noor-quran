@@ -16,7 +16,17 @@ class AudioService {
   AudioService._();
   static final AudioService instance = AudioService._();
 
-  final AudioPlayer player = AudioPlayer();
+  /// Created lazily, on first use.
+  ///
+  /// `just_audio_background` requires its `init()` to have completed before an
+  /// [AudioPlayer] is constructed, so the player is not built here (touching
+  /// the singleton must be free); it is built the first time it is needed,
+  /// which is after the background service has signalled readiness.
+  AudioPlayer? _player;
+  AudioPlayer get player => _player ??= AudioPlayer();
+
+  /// The player if it has already been created, without creating it.
+  AudioPlayer? get playerIfCreated => _player;
 
   List<AyahReciter> _ayahReciters = const [];
   List<AyahReciter> get ayahReciters => _ayahReciters;

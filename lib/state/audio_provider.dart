@@ -1,12 +1,21 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+
 import '../audio/audio_service.dart';
 import '../data/repository.dart';
 import '../models/models.dart';
 
 /// UI-facing bridge over [AudioService]; exposes reactive playback state.
+///
+/// Construction is cheap and safe: the player is not touched until
+/// [audioBackgroundReady] completes, because `just_audio_background` requires
+/// its `init()` to finish before the first [AudioPlayer] exists.
 class AudioProvider extends ChangeNotifier {
+  AudioProvider(this._ready);
+
+  final Future<void> _ready;
   final AudioService _svc = AudioService.instance;
   AudioService get service => _svc;
 
@@ -28,97 +37,150 @@ class AudioProvider extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
-  late final StreamSubscription _playSub;
-  late final StreamSubscription _posSub;
-  late final StreamSubscription _durSub;
-  late final StreamSubscription _idxSub;
-  late final StreamSubscription _stateSub;
+  final List<StreamSubscription<dynamic>> _subs = [];
+  bool _disposed = false;
 
-  AudioProvider() {
-    _playSub = _svc.playingStream.listen((v) {
-      _playing = v;
-      notifyListeners();
-    });
-    _posSub = _svc.positionStream.listen((v) {
-      _position = v;
-      notifyListeners();
-    });
-    _durSub = _svc.durationStream.listen((v) {
-      _duration = v;
-      notifyListeners();
-    });
-    _idxSub = _svc.currentIndexStream.listen((v) {
-      _currentIndex = v;
-      if (v != null) _svc.setCurrentIndexHint(v);
-      notifyListeners();
-    });
-    _stateSub = _svc.playerStateStream.listen((s) {
-      _buffering = s.processingState == ProcessingState.loading || s.processingState == ProcessingState.buffering;
-      if (s.processingState == ProcessingState.completed && !_svc.verseRepeat) {
-        // advance to next surah automatically at the end of the queue
-        if (_svc.mode == AudioMode.ayah) _svc.nextSurah();
-      }
-      notifyListeners();
-    });
+  @override
+  void dispose() {
+    _disposed = true;
+    for (final s in _subs) {
+      s.cancel();
+    }
+    super.dispose();
   }
 
-  void prime() {
+  /// Attaches to the player once the background service is ready.
+  /// Called by [prime]; idempotent.
+  bool _attached = false;
+  Future<void> _attach() async {
+    if (_attached) return;
+    await _ready;
+    if (_disposed) return;
+    _attached = true;
+    _svc.player; // force creation now that init() has completed
+
+    _subs.addAll([
+      _svc.playingStream.listen((v) => _set(() => _playing = v)),
+      _svc.positionStream.listen((v) => _set(() => _position = v)),
+      _svc.durationStream.listen((v) => _set(() => _duration = v)),
+      _svc.currentIndexStream.listen((v) {
+        _currentIndex = v;
+        if (v != null) _svc.setCurrentIndexHint(v);
+        if (!_disposed) notifyListeners();
+      }),
+      _svc.playerStateStream.listen((s) {
+        _buffering = s.processingState == ProcessingState.loading ||
+            s.processingState == ProcessingState.buffering;
+        if (s.processingState == ProcessingState.completed && !_svc.verseRepeat) {
+          if (_svc.mode == AudioMode.ayah) _svc.nextSurah();
+        }
+        if (!_disposed) notifyListeners();
+      }),
+    ]);
+  }
+
+  void _set(void Function() mutate) {
+    mutate();
+    if (!_disposed) notifyListeners();
+  }
+
+  /// Called once the optional bundles (and therefore the reciter list) land.
+  Future<void> prime() async {
+    await _attach();
     _svc.primeAyahReciters();
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
-  Future<void> playSurah({required Reciter reciter, required Moshaf moshaf, required int surahNumber}) async {
+  Future<void> playSurah({
+    required Reciter reciter,
+    required Moshaf moshaf,
+    required int surahNumber,
+  }) async {
     _error = null;
     try {
+      await _attach();
       await _svc.playSurah(reciter: reciter, moshaf: moshaf, surahNumber: surahNumber);
     } catch (e) {
       _error = 'Gagal memutar: ${e.toString().split('\n').first}';
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
-  Future<void> playAyahRecitation({required AyahReciter reciter, required int surahNumber, int fromAyah = 1}) async {
+  Future<void> playAyahRecitation({
+    required AyahReciter reciter,
+    required int surahNumber,
+    int fromAyah = 1,
+  }) async {
     _error = null;
     try {
+      await _attach();
       await _svc.playAyahRecitation(reciter: reciter, surahNumber: surahNumber, fromAyah: fromAyah);
     } catch (e) {
       _error = 'Gagal memutar: ${e.toString().split('\n').first}';
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
   Future<void> playRadio(Radio r) async {
     _error = null;
     try {
+      await _attach();
       await _svc.playRadio(r);
     } catch (e) {
       _error = 'Gagal memutar radio: ${e.toString().split('\n').first}';
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
-  Future<void> toggle() => _svc.togglePlay();
-  Future<void> next() => _svc.nextSurah();
-  Future<void> previous() => _svc.previousSurah();
-  Future<void> seek(Duration d) => _svc.player.seek(d);
-  Future<void> seekToAyah(int i) => _svc.seekToAyah(i);
-  Future<void> stop() => _svc.stop();
+  Future<void> toggle() async {
+    await _attach();
+    await _svc.togglePlay();
+  }
+
+  Future<void> next() async {
+    await _attach();
+    await _svc.nextSurah();
+  }
+
+  Future<void> previous() async {
+    await _attach();
+    await _svc.previousSurah();
+  }
+
+  Future<void> seek(Duration d) async {
+    await _attach();
+    await _svc.player.seek(d);
+  }
+
+  Future<void> seekToAyah(int i) async {
+    await _attach();
+    await _svc.seekToAyah(i);
+  }
+
+  Future<void> stop() async {
+    await _attach();
+    await _svc.stop();
+  }
 
   void setVerseRepeat(bool v) {
     _svc.setVerseRepeat(v);
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
-  Surah? get currentSurahObj =>
-      _svc.currentSurah >= 1 && _svc.currentSurah <= 114 ? QuranRepository.instance.surah(_svc.currentSurah) : null;
+  /// Playback speed. Reads the player only once it exists.
+  double get speed => _svc.playerIfCreated?.speed ?? 1.0;
 
-  @override
-  void dispose() {
-    _playSub.cancel();
-    _posSub.cancel();
-    _durSub.cancel();
-    _idxSub.cancel();
-    _stateSub.cancel();
-    super.dispose();
+  Future<void> cycleSpeed() async {
+    const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
+    await _attach();
+    final cur = _svc.player.speed;
+    final i = speeds.indexOf(cur);
+    await _svc.player.setSpeed(speeds[(i + 1) % speeds.length]);
+    if (!_disposed) notifyListeners();
+  }
+
+  Surah? get currentSurahObj {
+    final n = _svc.currentSurah;
+    return n >= 1 && n <= 114 ? QuranRepository.instance.surah(n) : null;
   }
 }

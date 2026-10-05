@@ -291,8 +291,8 @@ class _Extras extends StatelessWidget {
         _Pill(
           icon: Icons.speed_rounded,
           label: _speedLabel(audio),
-          active: audio.service.player.speed != 1.0,
-          onTap: () => _cycleSpeed(audio),
+          active: audio.speed != 1.0,
+          onTap: audio.cycleSpeed,
         ),
         _Pill(
           icon: Icons.headphones_rounded,
@@ -305,15 +305,8 @@ class _Extras extends StatelessWidget {
   }
 
   static String _speedLabel(AudioProvider a) {
-    final s = a.service.player.speed;
+    final s = a.speed;
     return '${s.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '')}x';
-  }
-
-  static void _cycleSpeed(AudioProvider a) {
-    const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
-    final cur = a.service.player.speed;
-    final i = speeds.indexOf(cur);
-    a.service.player.setSpeed(speeds[(i + 1) % speeds.length]);
   }
 }
 
