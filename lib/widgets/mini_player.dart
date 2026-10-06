@@ -43,7 +43,7 @@ class MiniPlayer extends StatelessWidget {
     // A live radio stream has no duration, so the palette is picked from the
     // station name instead of a surah number.
     final surahNumber = audio.currentSurahObj?.number ?? 1;
-    final palette = isRadio ? _radioPalette(svc.title) : paletteFor(surahNumber);
+    final palette = isRadio ? radioPalette(svc.title) : paletteFor(surahNumber);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
@@ -156,16 +156,6 @@ class MiniPlayer extends StatelessWidget {
       height: 44,
       child: SurahArt(number: surahNumber, radius: 13, showNumber: false),
     );
-  }
-
-  /// Deterministic palette for a radio station, seeded by its name so a given
-  /// station always wears the same colour.
-  static ArtPalette _radioPalette(String name) {
-    var h = 0;
-    for (final c in name.codeUnits) {
-      h = (h * 31 + c) & 0x7fffffff;
-    }
-    return kArtPalettes[h % kArtPalettes.length];
   }
 }
 

@@ -292,7 +292,7 @@ class _Art extends StatelessWidget {
   Widget build(BuildContext context) {
     final isRadio = radioName != null;
     final n = surah?.number ?? 1;
-    final palette = isRadio ? _radioPalette(radioName!) : paletteFor(n);
+    final palette = isRadio ? radioPalette(radioName!) : paletteFor(n);
 
     return Center(
       child: TweenAnimationBuilder<double>(
@@ -418,15 +418,6 @@ class _SignalPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SignalPainter old) => old.color != color;
-}
-
-/// Deterministic palette for a radio station, seeded by its name.
-ArtPalette _radioPalette(String name) {
-  var h = 0;
-  for (final c in name.codeUnits) {
-    h = (h * 31 + c) & 0x7fffffff;
-  }
-  return kArtPalettes[h % kArtPalettes.length];
 }
 
 class _TitleRow extends StatelessWidget {

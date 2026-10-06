@@ -100,7 +100,8 @@ class RadioScreen extends StatelessWidget {
                 itemBuilder: (_, i) {
                   final r = radios[i];
                   final isCurrent = currentRadio?.id == r.id;
-                  final palette = kArtPalettes[(i * 7 + 3) % kArtPalettes.length];
+                  final palette = radioPalette(r.name);
+                  final live = isCurrent && audio.playing;
                   return FadeRise(
                     delay: Duration(milliseconds: 16 * i),
                     duration: const Duration(milliseconds: 320),
@@ -117,30 +118,52 @@ class RadioScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(18),
                             border: isCurrent ? Border.all(color: palette.mid.withValues(alpha: 0.55), width: 1.2) : null,
                           ),
-                          child: Row(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                width: 46,
-                                height: 46,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(colors: [palette.deep, palette.mid], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Icon(isCurrent && audio.playing ? Icons.graphic_eq_rounded : Icons.radio_rounded, color: Colors.white, size: 22),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 46,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(colors: [palette.deep, palette.mid], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Icon(live ? Icons.graphic_eq_rounded : Icons.radio_rounded, color: Colors.white, size: 22),
+                                  ),
+                                  const SizedBox(width: 13),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, letterSpacing: -0.2)),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            if (live) ...[
+                                              const PulseDot(size: 5, color: Color(0xFFFF3B5C)),
+                                              const SizedBox(width: 5),
+                                              const Text('LIVE', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 1.0, color: Color(0xFFFF5577))),
+                                            ] else
+                                              Text(isCurrent ? 'Terjeda' : 'Live streaming',
+                                                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(live ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: isCurrent ? palette.mid : theme.colorScheme.primary, size: 30),
+                                ],
                               ),
-                              const SizedBox(width: 13),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(r.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, letterSpacing: -0.2)),
-                                    const SizedBox(height: 2),
-                                    Text(isCurrent ? (audio.playing ? 'Memutar…' : 'Terjeda') : 'Live streaming',
-                                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-                                  ],
+                              // The ribbon, only on the station actually playing.
+                              if (live) ...[
+                                const SizedBox(height: 8),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(3),
+                                  child: EqualizerBars(active: true, color: palette.accent, bars: 30, height: 4, barWidth: 2.5),
                                 ),
-                              ),
-                              Icon(isCurrent && audio.playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: isCurrent ? palette.mid : theme.colorScheme.primary, size: 30),
+                              ],
                             ],
                           ),
                         ),

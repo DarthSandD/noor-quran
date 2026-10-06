@@ -199,6 +199,19 @@ class _KhatamPainter extends CustomPainter {
   bool shouldRepaint(_KhatamPainter old) => old.accent != accent || old.seed != seed;
 }
 
+/// Deterministic palette for a radio station, seeded by its name.
+///
+/// Shared so a station wears the *same* colour in the radio page, the picker
+/// sheet, the mini-player and the full player — the colour becomes part of the
+/// station's identity rather than an artefact of list position.
+ArtPalette radioPalette(String name) {
+  var h = 0;
+  for (final c in name.codeUnits) {
+    h = (h * 31 + c) & 0x7fffffff;
+  }
+  return kArtPalettes[h % kArtPalettes.length];
+}
+
 /// The classic Qur'an-app surah marker: an eight-pointed star (Rub el Hizb)
 /// framing the surah number.
 ///

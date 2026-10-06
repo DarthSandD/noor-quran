@@ -178,7 +178,7 @@ class _NowPlayingCard extends StatelessWidget {
     final svc = audio.service;
     final surah = audio.currentSurahObj;
     final isRadio = svc.mode == AudioMode.radio;
-    final palette = isRadio ? _radioPalette(svc.title) : paletteFor(surah?.number ?? 1);
+    final palette = isRadio ? radioPalette(svc.title) : paletteFor(surah?.number ?? 1);
 
     return PressScale(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerScreen())),
@@ -258,15 +258,6 @@ class _NowPlayingCard extends StatelessWidget {
   }
 }
 
-/// Deterministic palette for a radio station, seeded by its name.
-ArtPalette _radioPalette(String name) {
-  var h = 0;
-  for (final c in name.codeUnits) {
-    h = (h * 31 + c) & 0x7fffffff;
-  }
-  return kArtPalettes[h % kArtPalettes.length];
-}
-
 class _FeaturedTile extends StatelessWidget {
   final Reciter reciter;
   const _FeaturedTile({required this.reciter});
@@ -329,7 +320,7 @@ class _RadioSheet extends StatelessWidget {
               itemBuilder: (_, i) {
                 final r = radios[i];
                 final isCurrent = audio.service.radio?.id == r.id;
-                final palette = _radioPalette(r.name);
+                final palette = radioPalette(r.name);
                 final live = isCurrent && audio.playing;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
