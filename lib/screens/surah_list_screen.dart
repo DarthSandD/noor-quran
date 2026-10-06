@@ -4,6 +4,7 @@ import '../data/repository.dart';
 import '../models/models.dart';
 import '../state/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/artwork.dart';
 import '../widgets/motion.dart';
 import 'surah_reader_screen.dart';
 
@@ -148,7 +149,7 @@ class _SurahTile extends StatelessWidget {
       child: PressScale(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SurahReaderScreen(surahNumber: surah.number))),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isDark ? AppColors.nightCard : Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -157,8 +158,17 @@ class _SurahTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _NumberBadge(number: surah.number),
-              const SizedBox(width: 14),
+              // A generated cover instead of a plain number chip — this is what
+              // gives the list its album-shelf character.
+              Hero(
+                tag: 'art-${surah.number}',
+                child: SizedBox(
+                  width: 54,
+                  height: 54,
+                  child: SurahArt(number: surah.number, juz: surah.ayahs.first.juz, radius: 15, label: null, showNumber: true),
+                ),
+              ),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,27 +190,4 @@ class _SurahTile extends StatelessWidget {
   }
 }
 
-class _NumberBadge extends StatelessWidget {
-  final int number;
-  const _NumberBadge({required this.number});
 
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [scheme.primary.withValues(alpha: 0.16), scheme.primary.withValues(alpha: 0.06)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Center(
-        child: Text('$number', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: scheme.primary)),
-      ),
-    );
-  }
-}

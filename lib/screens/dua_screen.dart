@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../data/repository.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../widgets/artwork.dart';
 import '../widgets/motion.dart';
 
 class DuaScreen extends StatefulWidget {
@@ -61,47 +64,73 @@ class _Segments extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = [const Color(0xFF16A085), const Color(0xFF2980B9), const Color(0xFF8E44AD), const Color(0xFFE67E22), const Color(0xFFC0392B), const Color(0xFFD4AF37), const Color(0xFF27AE60)];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 130),
       itemCount: segments.length,
       itemBuilder: (_, i) {
         final s = segments[i];
         final count = s.categories.fold<int>(0, (a, c) => a + c.titles.fold<int>(0, (b, t) => b + t.duas.length));
-        final color = colors[i % colors.length];
+        final palette = kArtPalettes[i % kArtPalettes.length];
         return FadeRise(
           delay: Duration(milliseconds: 45 * i),
           duration: const Duration(milliseconds: 400),
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: 11),
             child: PressScale(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => _CategoryList(segment: s))),
               child: Container(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  gradient: LinearGradient(
+                    colors: [palette.deep, palette.mid],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: color.withValues(alpha: 0.18)),
+                  boxShadow: isDark ? null : Motion.glow(palette.mid, alpha: 0.28, blur: 18, y: 8),
                 ),
-                child: Row(
+                child: Stack(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(16)),
-                      child: Icon(_iconFor(s.name), color: color, size: 24),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_idName(s.name), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: -0.3)),
-                          const SizedBox(height: 3),
-                          Text('${s.categories.length} kategori • $count doa', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
-                        ],
+                    // Faint Khatam motif so the tile carries the brand pattern.
+                    Positioned(
+                      right: -14,
+                      top: -14,
+                      child: Opacity(
+                        opacity: 0.30,
+                        child: SizedBox(
+                          width: 92,
+                          height: 92,
+                          child: CustomPaint(painter: _TileMotif(accent: palette.accent)),
+                        ),
                       ),
                     ),
-                    Icon(Icons.chevron_right_rounded, color: color.withValues(alpha: 0.7)),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                          ),
+                          child: Icon(_iconFor(s.name), color: Colors.white, size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_idName(s.name), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: -0.3)),
+                              const SizedBox(height: 3),
+                              Text('${s.categories.length} kategori • $count doa',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.78))),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.7)),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -133,6 +162,31 @@ class _Segments extends StatelessWidget {
         'Quranic Duas' => 'Doa dari Al-Qur\'an',
         _ => n,
       };
+}
+
+/// Small Khatam motif used inside list tiles.
+class _TileMotif extends CustomPainter {
+  _TileMotif({required this.accent});
+  final Color accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = accent.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    final c = Offset(size.width / 2, size.height / 2);
+    for (final rot in [0.0, math.pi / 4]) {
+      final pts = List.generate(4, (i) {
+        final a = rot + i * math.pi / 2;
+        return c.translate(size.width * 0.38 * math.cos(a), size.width * 0.38 * math.sin(a));
+      });
+      canvas.drawPath(Path()..addPolygon(pts, true), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TileMotif old) => old.accent != accent;
 }
 
 class _CategoryList extends StatelessWidget {

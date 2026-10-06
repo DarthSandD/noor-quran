@@ -8,6 +8,8 @@ import '../models/models.dart';
 import '../state/audio_provider.dart';
 import '../state/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/artwork.dart';
+import '../widgets/reciter_avatar.dart';
 import 'player_screen.dart';
 
 /// A reciter's page — the "artist" view.
@@ -60,22 +62,8 @@ class ReciterScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 30),
-                        Container(
-                          width: 96,
-                          height: 96,
-                          decoration: BoxDecoration(
-                            gradient: Grad.goldSheen,
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.4), blurRadius: 26, offset: const Offset(0, 12))],
-                          ),
-                          child: Center(
-                            child: Text(
-                              r.name.trim().split(' ').first.characters.first,
-                              style: const TextStyle(color: AppColors.emeraldDeep, fontSize: 40, fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
+                        ReciterHero(name: r.name, seed: r.id, size: 116),
+                        const SizedBox(height: 16),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 28),
                           child: Text(
@@ -116,16 +104,8 @@ class ReciterScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   IconButton.filledTonal(
-                    tooltip: 'Acak',
-                    onPressed: () {
-                      if (surahs.isEmpty) return;
-                      // A real shuffle: pick from the whole list rather than
-                      // keying off the clock (which repeated for the same ms).
-                      final n = surahs[math.Random().nextInt(surahs.length)].number;
-                      settings.setReciter(r.id, r.name, selected.id);
-                      audio.playSurah(reciter: r, moshaf: selected, surahNumber: n);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerScreen()));
-                    },
+                    tooltip: 'Acak semua',
+                    onPressed: () => _shuffleAll(context, r, selected, surahs, settings, audio),
                     icon: const Icon(Icons.shuffle_rounded),
                   ),
                 ],
@@ -171,7 +151,11 @@ class ReciterScreen extends StatelessWidget {
                   audio.playSurah(reciter: r, moshaf: selected, surahNumber: s.number);
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerScreen()));
                 },
-                leading: _NumberBadge(number: s.number, active: isCurrent),
+                leading: SizedBox(
+                  width: 46,
+                  height: 46,
+                  child: SurahArt(number: s.number, juz: s.ayahs.first.juz, radius: 13, showNumber: true),
+                ),
                 title: Text(s.transliteration, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: isCurrent ? theme.colorScheme.primary : null)),
                 subtitle: Text('${s.ayahCount} ayat • ${s.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'}', style: const TextStyle(fontSize: 11.5)),
                 trailing: Icon(
@@ -189,29 +173,15 @@ class ReciterScreen extends StatelessWidget {
   }
 }
 
-class _NumberBadge extends StatelessWidget {
-  final int number;
-  final bool active;
-  const _NumberBadge({required this.number, required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 38,
-      height: 38,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: active ? AppColors.gold.withValues(alpha: 0.2) : Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        '$number',
-        style: TextStyle(
-          fontWeight: FontWeight.w800,
-          fontSize: 13,
-          color: active ? AppColors.goldDeep : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-        ),
-      ),
-    );
-  }
+/// Shuffles the reciter's whole catalogue.
+///
+/// Real shuffle: the queue is rebuilt in random order, so playback genuinely
+/// jumps around instead of picking one random starting surah and then running
+/// in order.
+void _shuffleAll(BuildContext context, Reciter r, Moshaf selected, List<Surah> surahs, SettingsProvider settings, AudioProvider audio) {
+  if (surahs.isEmpty) return;
+  final shuffled = [...surahs]..shuffle(math.Random());
+  settings.setReciter(r.id, r.name, selected.id);
+  audio.playShuffled(reciter: r, moshaf: selected, surahNumbers: shuffled.map((s) => s.number).toList());
+  Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerScreen()));
 }

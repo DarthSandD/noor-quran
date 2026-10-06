@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
@@ -148,6 +150,50 @@ class AudioService {
   Future<void> playAll({required Reciter reciter, required Moshaf moshaf}) =>
       playSurah(reciter: reciter, moshaf: moshaf, surahNumber: 1);
 
+  /// Plays an explicit, pre-shuffled list of surahs in that exact order.
+  ///
+  /// The queue order is whatever [surahNumbers] says, so shuffle actually
+  /// shuffles the whole run rather than just its starting point.
+  Future<void> playShuffled({
+    required Reciter reciter,
+    required Moshaf moshaf,
+    required List<int> surahNumbers,
+  }) async {
+    _mode = AudioMode.surah;
+    _reciter = reciter;
+    _moshaf = moshaf;
+    _radio = null;
+    _ayahReciter = null;
+    _ayahQueueLength = 0;
+
+    final list = [
+      for (final n in surahNumbers)
+        if (n >= 1 && n <= 114 && moshaf.hasSurah(n)) _surahs[n - 1],
+    ];
+    if (list.isEmpty) return;
+
+    _queue = list.map((s) => s.number).toList(growable: false);
+    _surah = _queue.first;
+    _refreshSurahTitle();
+
+    final sources = [
+      for (final s in list)
+        AudioSource.uri(
+          Uri.parse(moshaf.surahUrl(s.number)),
+          tag: MediaItem(
+            id: moshaf.surahUrl(s.number),
+            title: 'Surah ${s.transliteration}',
+            artist: reciter.name,
+            album: moshaf.name,
+          ),
+        ),
+    ];
+
+    await player.setAudioSources(sources, initialIndex: 0, initialPosition: Duration.zero);
+    _applyLoop();
+    player.play();
+  }
+
   void _refreshSurahTitle() {
     if (_surah < 1 || _surah > 114) return;
     final s = _surahs[_surah - 1];
@@ -287,6 +333,19 @@ class AudioService {
     if (n < 1 || _ayahReciter == null) return false;
     await playAyahRecitation(reciter: _ayahReciter!, surahNumber: n);
     return true;
+  }
+
+  /// Rebuilds the current surah queue in random order, keeping the currently
+  /// playing surah first so the music never stops.
+  Future<void> shuffleQueue() async {
+    if (_mode != AudioMode.surah || _queue.length < 2) return;
+    final current = _surah;
+    final rest = _queue.where((n) => n != current).toList()..shuffle(math.Random());
+    final ordered = [current, ...rest];
+    final reciter = _reciter;
+    final moshaf = _moshaf;
+    if (reciter == null || moshaf == null) return;
+    await playShuffled(reciter: reciter, moshaf: moshaf, surahNumbers: ordered);
   }
 
   Future<void> stop() async {

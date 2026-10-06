@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../data/repository.dart';
 import '../state/settings_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/artwork.dart';
 import '../widgets/motion.dart';
 import 'asma_screen.dart';
 import 'bookmark_screen.dart';
@@ -68,16 +69,16 @@ class MoreScreen extends StatelessWidget {
             ),
           ),
           FadeRise(
-            delay: const Duration(milliseconds: 60),
-            child: _Group(children: [
-              _Tile(icon: Icons.search_rounded, color: const Color(0xFF16A085), title: 'Cari Ayat', subtitle: 'Teks Arab & terjemahan', onTap: () => _go(context, const SearchScreen())),
-              _Tile(icon: Icons.fingerprint_rounded, color: AppColors.gold, title: 'Tasbih Digital', subtitle: 'Dzikir dengan hitungan', onTap: () => _go(context, const TasbihScreen())),
-              _Tile(icon: Icons.diamond_rounded, color: const Color(0xFF2980B9), title: 'Asmaul Husna', subtitle: '99 nama Allah', onTap: () => _go(context, const AsmaScreen())),
-              _Tile(icon: Icons.radio_rounded, color: const Color(0xFFE67E22), title: 'Radio Qur\'an', subtitle: '${repo.radios.length} stasiun live', onTap: () => _go(context, const RadioScreen())),
-              _Tile(icon: Icons.bookmark_rounded, color: const Color(0xFFC0392B), title: 'Penanda', subtitle: '${settings.bookmarks.length} ayat ditandai', onTap: () => _go(context, const BookmarkScreen())),
-              _Tile(icon: Icons.headphones_rounded, color: const Color(0xFF8E44AD), title: 'Pustaka Murottal', subtitle: '${repo.reciters.length} qari • putar berurutan', onTap: () => _go(context, const MurottalScreen())),
-            ]),
-          ),
+                      delay: const Duration(milliseconds: 60),
+                      child: _Group(children: [
+                        _Tile(icon: Icons.search_rounded, paletteIdx: 0, title: 'Cari Ayat', subtitle: 'Teks Arab & terjemahan', onTap: () => _go(context, const SearchScreen())),
+                        _Tile(icon: Icons.fingerprint_rounded, paletteIdx: 1, title: 'Tasbih Digital', subtitle: 'Dzikir dengan hitungan', onTap: () => _go(context, const TasbihScreen())),
+                        _Tile(icon: Icons.diamond_rounded, paletteIdx: 3, title: 'Asmaul Husna', subtitle: '99 nama Allah', onTap: () => _go(context, const AsmaScreen())),
+                        _Tile(icon: Icons.radio_rounded, paletteIdx: 4, title: 'Radio Qur\'an', subtitle: '${repo.radios.length} stasiun live', onTap: () => _go(context, const RadioScreen())),
+                        _Tile(icon: Icons.bookmark_rounded, paletteIdx: 5, title: 'Penanda', subtitle: '${settings.bookmarks.length} ayat ditandai', onTap: () => _go(context, const BookmarkScreen())),
+                        _Tile(icon: Icons.headphones_rounded, paletteIdx: 2, title: 'Pustaka Murottal', subtitle: '${repo.reciters.length} qari • putar berurutan', onTap: () => _go(context, const MurottalScreen())),
+                      ]),
+                    ),
           const SizedBox(height: 18),
           FadeRise(
             delay: const Duration(milliseconds: 110),
@@ -162,7 +163,7 @@ class MoreScreen extends StatelessWidget {
           FadeRise(
             delay: const Duration(milliseconds: 210),
             child: _Group(children: [
-              _Tile(icon: Icons.info_outline_rounded, color: Colors.blueGrey, title: 'Tentang Noor Qur\'an', subtitle: 'Sumber data & lisensi', onTap: () => _about(context)),
+              _Tile(icon: Icons.info_outline_rounded, paletteIdx: 1, title: 'Tentang Noor Qur\'an', subtitle: 'Sumber data & lisensi', onTap: () => _about(context)),
             ]),
           ),
           const SizedBox(height: 24),
@@ -250,18 +251,24 @@ class _Group extends StatelessWidget {
 
 class _Tile extends StatelessWidget {
   final IconData icon;
-  final Color color;
+  final int paletteIdx;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  const _Tile({required this.icon, required this.color, required this.title, required this.subtitle, required this.onTap});
+  const _Tile({required this.icon, required this.paletteIdx, required this.title, required this.subtitle, required this.onTap});
   @override
   Widget build(BuildContext context) {
+    final palette = kArtPalettes[paletteIdx % kArtPalettes.length];
     return ListTile(
       leading: Container(
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-        child: Icon(icon, color: color, size: 20),
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [palette.deep, palette.mid], begin: Alignment.topLeft, end: Alignment.bottomRight),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: palette.mid.withValues(alpha: 0.34), blurRadius: 8, offset: const Offset(0, 4))],
+        ),
+        child: Icon(icon, color: Colors.white, size: 18),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),

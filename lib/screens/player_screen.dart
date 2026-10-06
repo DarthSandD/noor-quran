@@ -6,9 +6,15 @@ import '../data/youtube_library.dart';
 import '../models/models.dart';
 import '../state/audio_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/brand.dart';
+import '../widgets/artwork.dart';
 import '../widgets/motion.dart';
 
+/// The now-playing screen.
+///
+/// Deliberately shaped like the music player everyone already knows: full-bleed
+/// artwork, a colour wash pulled from that artwork, one huge white play button,
+/// and the queue a tap away. The Qur'an content changes; the interaction
+/// vocabulary does not have to be learned again.
 class PlayerScreen extends StatefulWidget {
   final int? initialReciterId;
   const PlayerScreen({super.key, this.initialReciterId});
@@ -19,6 +25,9 @@ class PlayerScreen extends StatefulWidget {
 class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderStateMixin {
   late final TabController _tab = TabController(length: 2, vsync: this);
 
+  /// Drag-to-dismiss progress (0 = fully open, 1 = dismissed).
+  double _drag = 0;
+
   @override
   void dispose() {
     _tab.dispose();
@@ -28,42 +37,49 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final audio = context.watch<AudioProvider>();
+    final surahNumber = audio.currentSurahObj?.number ?? 1;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: Grad.night),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  IconButton(icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 30), onPressed: () => Navigator.pop(context)),
-                  const Spacer(),
-                  const Text('Sedang Diputar', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 13)),
-                  const Spacer(),
-                  IconButton(icon: const Icon(Icons.more_horiz_rounded, color: Colors.white), onPressed: () {}),
-                ],
-              ),
-              TabBar(
-                controller: _tab,
-                indicatorColor: AppColors.gold,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white54,
-                tabs: const [
-                  Tab(text: 'Murottal'),
-                  Tab(text: 'YouTube'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  controller: _tab,
-                  children: [
-                    _MurottalTab(audio: audio),
-                    const _YouTubeTab(),
-                  ],
+      backgroundColor: const Color(0xFF050A09),
+      body: GestureDetector(
+        onVerticalDragUpdate: (d) => setState(() {
+          _drag = (_drag + d.delta.dy / 420).clamp(0.0, 1.0);
+        }),
+        onVerticalDragEnd: (d) {
+          final v = d.primaryVelocity ?? 0;
+          if (_drag > 0.26 || v > 700) {
+            Navigator.pop(context);
+          } else {
+            setState(() => _drag = 0);
+          }
+        },
+        child: Transform.translate(
+          offset: Offset(0, _drag * 300),
+          child: Transform.scale(
+            scale: 1 - _drag * 0.06,
+            child: Stack(
+              children: [
+                _Wash(surahNumber: surahNumber),
+                SafeArea(
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      _TopBar(onClose: () => Navigator.pop(context)),
+                      _Tabs(controller: _tab),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tab,
+                          children: [
+                            _NowPlaying(audio: audio),
+                            const _YouTubeTab(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -71,108 +87,178 @@ class _PlayerScreenState extends State<PlayerScreen> with SingleTickerProviderSt
   }
 }
 
-class _MurottalTab extends StatelessWidget {
+/// Full-bleed colour wash derived from the current surah's artwork, fading to
+/// near-black at the bottom so the controls sit on a calm surface.
+class _Wash extends StatelessWidget {
+  const _Wash({required this.surahNumber});
+  final int surahNumber;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = paletteFor(surahNumber);
+    return AnimatedContainer(
+      duration: Motion.slow,
+      curve: Motion.curve,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            palette.mid,
+            Color.lerp(palette.deep, const Color(0xFF050A09), 0.5)!,
+            const Color(0xFF050A09),
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.9),
+            radius: 1.15,
+            colors: [palette.glow.withValues(alpha: 0.42), Colors.transparent],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.onClose});
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 50,
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 30),
+            onPressed: onClose,
+            tooltip: 'Tutup',
+          ),
+          const Spacer(),
+          const Text(
+            'SEDANG DIPUTAR',
+            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 10.5, letterSpacing: 1.6),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
+            onPressed: () {},
+            tooltip: 'Opsi',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tabs extends StatelessWidget {
+  const _Tabs({required this.controller});
+  final TabController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return TabBar(
+      controller: controller,
+      indicatorColor: Colors.white,
+      indicatorSize: TabBarIndicatorSize.label,
+      indicatorWeight: 2.5,
+      dividerColor: Colors.transparent,
+      labelColor: Colors.white,
+      unselectedLabelColor: Colors.white38,
+      labelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, letterSpacing: 0.3),
+      unselectedLabelStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+      tabs: const [Tab(text: 'Murottal'), Tab(text: 'YouTube')],
+    );
+  }
+}
+
+class _NowPlaying extends StatelessWidget {
+  const _NowPlaying({required this.audio});
   final AudioProvider audio;
-  const _MurottalTab({required this.audio});
 
   @override
   Widget build(BuildContext context) {
     final svc = audio.service;
     final surah = audio.currentSurahObj;
     final hasQueue = svc.title.isNotEmpty;
-    return Column(
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-            children: [
-              _Artwork(surah: surah, playing: audio.playing),
-              const SizedBox(height: 28),
-              Text(
-                hasQueue ? svc.title : 'Pilih Murottal',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w800, letterSpacing: -0.4),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                hasQueue ? svc.subtitle : 'Pilih qari untuk mulai memutar',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white60, fontSize: 13.5),
-              ),
-              const SizedBox(height: 22),
-              if (hasQueue) _Progress(audio: audio),
-              if (hasQueue) const SizedBox(height: 6),
-              if (hasQueue) _Controls(audio: audio),
-              const SizedBox(height: 18),
-              _Extras(audio: audio),
-              const SizedBox(height: 10),
-              if (surah != null && svc.mode.name == 'ayah') _AyahScrubber(audio: audio, surah: surah),
-            ],
+        _Art(surah: surah, playing: audio.playing),
+        const SizedBox(height: 28),
+        _TitleRow(audio: audio, hasQueue: hasQueue),
+        if (hasQueue) ...[
+          const SizedBox(height: 18),
+          _Progress(audio: audio),
+          const SizedBox(height: 10),
+          _Controls(audio: audio),
+          const SizedBox(height: 16),
+          _BottomRow(audio: audio),
+          if (surah != null && svc.mode.name == 'ayah') ...[
+            const SizedBox(height: 18),
+            _AyahScrubber(audio: audio, surah: surah),
+          ],
+        ] else
+          const Padding(
+            padding: EdgeInsets.only(top: 44),
+            child: Text(
+              'Pilih qari dari pustaka Murottal untuk mulai memutar.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white54, fontSize: 13.5, height: 1.5),
+            ),
           ),
-        ),
-        if (hasQueue) _QueueBar(audio: audio),
       ],
     );
   }
 }
 
-class _Artwork extends StatelessWidget {
+/// Large square artwork with a deep shadow — the visual anchor of the screen.
+class _Art extends StatelessWidget {
+  const _Art({required this.surah, required this.playing});
   final Surah? surah;
   final bool playing;
-  const _Artwork({required this.surah, required this.playing});
 
   @override
   Widget build(BuildContext context) {
+    final n = surah?.number ?? 1;
     return Center(
       child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0.94, end: 1.0),
+        tween: Tween(begin: 0.9, end: 1.0),
         duration: Motion.slow,
         curve: Motion.curve,
         builder: (_, scale, child) => Transform.scale(scale: scale, child: child),
         child: AnimatedContainer(
           duration: Motion.slow,
           curve: Motion.curve,
-          height: 248,
-          width: 248,
+          width: 296,
+          height: 296,
           decoration: BoxDecoration(
-            gradient: playing ? Grad.goldSheen : Grad.emerald,
-            borderRadius: BorderRadius.circular(36),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: (playing ? AppColors.gold : AppColors.emerald).withValues(alpha: playing ? 0.5 : 0.4),
-                blurRadius: playing ? 56 : 40,
+                color: paletteFor(n).glow.withValues(alpha: playing ? 0.5 : 0.32),
+                blurRadius: playing ? 58 : 40,
                 spreadRadius: playing ? 2 : 0,
-                offset: const Offset(0, 18),
+                offset: const Offset(0, 22),
               ),
+              const BoxShadow(color: Colors.black54, blurRadius: 30, offset: Offset(0, 14)),
             ],
           ),
-          child: Stack(
-            children: [
-              Positioned(
-                right: -26,
-                bottom: -30,
-                child: Opacity(
-                  opacity: 0.16,
-                  child: NoorMark(size: 170, glow: false, color: playing ? AppColors.emeraldDeep : Colors.white),
-                ),
-              ),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(26),
-                  child: Text(
-                    surah?.name ?? '﷽',
-                    textAlign: TextAlign.center,
-                    textDirection: TextDirection.rtl,
-                    style: TextStyle(
-                      fontFamily: 'AmiriQuran',
-                      color: playing ? AppColors.emeraldDeep : Colors.white,
-                      fontSize: 46,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          child: Hero(
+            tag: 'art-$n',
+            child: SurahArt(
+              number: n,
+              juz: surah?.ayahs.first.juz,
+              radius: 24,
+              label: surah?.name,
+              showNumber: false,
+            ),
           ),
         ),
       ),
@@ -180,93 +266,125 @@ class _Artwork extends StatelessWidget {
   }
 }
 
-class _Progress extends StatelessWidget {
+class _TitleRow extends StatelessWidget {
+  const _TitleRow({required this.audio, required this.hasQueue});
   final AudioProvider audio;
-  const _Progress({required this.audio});
+  final bool hasQueue;
+
   @override
   Widget build(BuildContext context) {
-    final dur = audio.duration ?? Duration.zero;
-    final pos = audio.position;
-    final max = dur.inMilliseconds > 0 ? dur.inMilliseconds.toDouble() : 1.0;
-    return Column(
+    return Row(
       children: [
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: AppColors.gold,
-            inactiveTrackColor: Colors.white24,
-            thumbColor: Colors.white,
-            overlayColor: AppColors.gold.withValues(alpha: 0.2),
-            trackHeight: 4,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-          ),
-          child: Slider(
-            value: pos.inMilliseconds.clamp(0, max.toInt()).toDouble(),
-            max: max,
-            onChanged: (v) => audio.seek(Duration(milliseconds: v.toInt())),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_fmt(pos), style: const TextStyle(color: Colors.white60, fontSize: 11.5)),
-              Text(_fmt(dur), style: const TextStyle(color: Colors.white60, fontSize: 11.5)),
+              Text(
+                hasQueue ? audio.service.title : 'Belum ada yang diputar',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                hasQueue ? audio.service.subtitle : 'Pustaka Murottal',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.62), fontSize: 13.5, fontWeight: FontWeight.w600),
+              ),
             ],
           ),
         ),
+        if (hasQueue) ...[
+          const SizedBox(width: 10),
+          _SpeedChip(audio: audio),
+        ],
       ],
     );
   }
+}
+
+class _SpeedChip extends StatelessWidget {
+  const _SpeedChip({required this.audio});
+  final AudioProvider audio;
+
+  static String _label(double s) =>
+      '${s.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '')}×';
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      onTap: audio.cycleSpeed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        ),
+        child: Text(
+          _label(audio.speed),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5),
+        ),
+      ),
+    );
+  }
+}
+
+class _Progress extends StatefulWidget {
+  const _Progress({required this.audio});
+  final AudioProvider audio;
+
+  @override
+  State<_Progress> createState() => _ProgressState();
+}
+
+class _ProgressState extends State<_Progress> {
+  double? _scrub;
 
   static String _fmt(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$m:$s';
   }
-}
-
-class _Controls extends StatelessWidget {
-  final AudioProvider audio;
-  const _Controls({required this.audio});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    final dur = widget.audio.duration ?? Duration.zero;
+    final pos = widget.audio.position;
+    final max = dur.inMilliseconds > 0 ? dur.inMilliseconds.toDouble() : 1.0;
+    final value = (_scrub ?? pos.inMilliseconds.toDouble()).clamp(0.0, max);
+
+    return Column(
       children: [
-        PressScale(
-          scale: 0.88,
-          onTap: audio.previous,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 26),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 4,
+            activeTrackColor: Colors.white,
+            inactiveTrackColor: Colors.white24,
+            thumbColor: Colors.white,
+            overlayColor: Colors.white.withValues(alpha: 0.15),
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+          ),
+          child: Slider(
+            value: value,
+            max: max,
+            onChanged: (v) => setState(() => _scrub = v),
+            onChangeEnd: (v) {
+              widget.audio.seek(Duration(milliseconds: v.toInt()));
+              setState(() => _scrub = null);
+            },
           ),
         ),
-        const SizedBox(width: 22),
-        PressScale(
-          scale: 0.9,
-          onTap: audio.toggle,
-          child: Container(
-            width: 74,
-            height: 74,
-            decoration: BoxDecoration(
-              gradient: Grad.goldSheen,
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.45), blurRadius: 24, offset: const Offset(0, 8))],
-            ),
-            child: Icon(audio.playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: AppColors.emeraldDeep, size: 42),
-          ),
-        ),
-        const SizedBox(width: 22),
-        PressScale(
-          scale: 0.88,
-          onTap: audio.next,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 26),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(_fmt(Duration(milliseconds: value.toInt())), style: const TextStyle(color: Colors.white60, fontSize: 11.5, fontWeight: FontWeight.w600)),
+              Text(_fmt(dur), style: const TextStyle(color: Colors.white60, fontSize: 11.5, fontWeight: FontWeight.w600)),
+            ],
           ),
         ),
       ],
@@ -274,95 +392,171 @@ class _Controls extends StatelessWidget {
   }
 }
 
-class _Extras extends StatelessWidget {
+/// Shuffle · previous · PLAY · next · repeat — the canonical transport row.
+class _Controls extends StatelessWidget {
+  const _Controls({required this.audio});
   final AudioProvider audio;
-  const _Extras({required this.audio});
+
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _Pill(
-          icon: Icons.repeat_rounded,
-          label: 'Ulang',
+        _IconBtn(
+          icon: Icons.shuffle_rounded,
+          size: 24,
+          enabled: audio.upNextCount > 1,
+          onTap: () {
+            audio.shuffleQueue();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Antrean diacak')),
+            );
+          },
+        ),
+        _IconBtn(icon: Icons.skip_previous_rounded, size: 38, enabled: audio.hasPrevious, onTap: audio.previous),
+        _PlayButton(audio: audio),
+        _IconBtn(icon: Icons.skip_next_rounded, size: 38, enabled: audio.hasNext, onTap: audio.next),
+        _IconBtn(
+          icon: audio.service.verseRepeat ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+          size: 24,
           active: audio.service.verseRepeat,
           onTap: () => audio.setVerseRepeat(!audio.service.verseRepeat),
-        ),
-        _Pill(
-          icon: Icons.speed_rounded,
-          label: _speedLabel(audio),
-          active: audio.speed != 1.0,
-          onTap: audio.cycleSpeed,
-        ),
-        _Pill(
-          icon: Icons.queue_music_rounded,
-          label: '${audio.upNextCount}',
-          active: false,
-          onTap: () => _showQueue(context, audio),
         ),
       ],
     );
   }
+}
 
-  static void _showQueue(BuildContext context, AudioProvider audio) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => _QueueSheet(audio: audio),
+class _IconBtn extends StatelessWidget {
+  const _IconBtn({required this.icon, required this.size, this.onTap, this.enabled = true, this.active = false});
+  final IconData icon;
+  final double size;
+  final VoidCallback? onTap;
+  final bool enabled;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? AppColors.goldSoft : (enabled ? Colors.white : Colors.white24);
+    return PressScale(
+      scale: 0.88,
+      onTap: enabled ? onTap : null,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Icon(icon, color: color, size: size),
+      ),
     );
-  }
-
-  static String _speedLabel(AudioProvider a) {
-    final s = a.speed;
-    return '${s.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '')}x';
   }
 }
 
-/// "Berikutnya" — the rest of the queue, tap to jump. This is the piece that
-/// makes it feel like an album rather than a one-off file.
-class _QueueSheet extends StatelessWidget {
+class _PlayButton extends StatelessWidget {
+  const _PlayButton({required this.audio});
   final AudioProvider audio;
+
+  @override
+  Widget build(BuildContext context) {
+    final busy = audio.buffering;
+    return PressScale(
+      scale: 0.93,
+      onTap: audio.toggle,
+      child: Container(
+        width: 72,
+        height: 72,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 24, offset: Offset(0, 10))],
+        ),
+        child: busy && !audio.playing
+            ? const Padding(
+                padding: EdgeInsets.all(22),
+                child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.black),
+              )
+            : Icon(audio.playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: Colors.black, size: 40),
+      ),
+    );
+  }
+}
+
+class _BottomRow extends StatelessWidget {
+  const _BottomRow({required this.audio});
+  final AudioProvider audio;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.speed_rounded, color: Colors.white70, size: 22),
+          tooltip: 'Kecepatan',
+          onPressed: audio.cycleSpeed,
+        ),
+        TextButton.icon(
+          onPressed: () => showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: AppColors.nightSurface,
+            builder: (_) => _QueueSheet(audio: audio),
+          ),
+          icon: const Icon(Icons.queue_music_rounded, color: Colors.white70, size: 20),
+          label: Text(
+            audio.upNextCount > 0 ? 'Antrean · ${audio.upNextCount}' : 'Antrean',
+            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12.5),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.volume_up_rounded, color: Colors.white70, size: 22),
+          tooltip: 'Volume',
+          onPressed: () {},
+        ),
+      ],
+    );
+  }
+}
+
+/// "Berikutnya" — the rest of the queue, tap to jump.
+class _QueueSheet extends StatelessWidget {
   const _QueueSheet({required this.audio});
+  final AudioProvider audio;
 
   @override
   Widget build(BuildContext context) {
     final upNext = audio.upNext;
     final current = audio.currentSurahObj;
-    final baseIndex = (audio.service.queueIndex) + 1;
+    final baseIndex = audio.service.queueIndex + 1;
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.6,
-      maxChildSize: 0.9,
+      initialChildSize: 0.62,
+      maxChildSize: 0.92,
       builder: (context, controller) => Column(
         children: [
           const Padding(
-            padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 10),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Berikutnya', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+              child: Text('Berikutnya', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800)),
             ),
           ),
           if (current != null)
             ListTile(
-              leading: const Icon(Icons.graphic_eq_rounded),
-              title: Text('Surah ${current.transliteration}', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: const Text('Sedang diputar', style: TextStyle(fontSize: 11.5)),
+              leading: SizedBox(width: 44, height: 44, child: SurahArt(number: current.number, radius: 10, showNumber: false)),
+              title: Text('Surah ${current.transliteration}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              subtitle: const Text('Sedang diputar', style: TextStyle(fontSize: 11.5, color: AppColors.goldSoft)),
             ),
-          const Divider(height: 1),
+          const Divider(height: 1, color: Colors.white12),
           Expanded(
             child: upNext.isEmpty
-                ? const Center(child: Text('Tidak ada antrean berikutnya'))
+                ? const Center(child: Text('Tidak ada antrean berikutnya', style: TextStyle(color: Colors.white54)))
                 : ListView.builder(
                     controller: controller,
                     itemCount: upNext.length,
                     itemBuilder: (_, i) {
                       final s = upNext[i];
                       return ListTile(
-                        dense: true,
-                        leading: Text('${s.number}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                        title: Text(s.transliteration, style: const TextStyle(fontSize: 14)),
-                        subtitle: Text('${s.ayahCount} ayat', style: const TextStyle(fontSize: 11)),
+                        leading: SizedBox(width: 44, height: 44, child: SurahArt(number: s.number, radius: 10, showNumber: false)),
+                        title: Text(s.transliteration, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                        subtitle: Text('${s.ayahCount} ayat • surah ${s.number}', style: const TextStyle(fontSize: 11, color: Colors.white38)),
                         onTap: () {
                           Navigator.pop(context);
                           audio.jumpToQueueIndex(baseIndex + i);
@@ -377,49 +571,23 @@ class _QueueSheet extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _Pill({required this.icon, required this.label, required this.active, required this.onTap});
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: active ? AppColors.gold : Colors.white.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: active ? AppColors.emeraldDeep : Colors.white, size: 20),
-          ),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
+/// Verse grid for ayah-by-ayah recitation.
 class _AyahScrubber extends StatelessWidget {
+  const _AyahScrubber({required this.audio, required this.surah});
   final AudioProvider audio;
   final Surah surah;
-  const _AyahScrubber({required this.audio, required this.surah});
+
   @override
   Widget build(BuildContext context) {
     final idx = audio.service.currentAyahIndex;
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(18)),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Ayat ${idx + 1} dari ${surah.ayahCount}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -432,10 +600,13 @@ class _AyahScrubber extends StatelessWidget {
                     height: 30,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: i == idx ? AppColors.gold : Colors.white.withValues(alpha: 0.1),
+                      color: i == idx ? Colors.white : Colors.white.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(9),
                     ),
-                    child: Text('${i + 1}', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: i == idx ? AppColors.emeraldDeep : Colors.white70)),
+                    child: Text(
+                      '${i + 1}',
+                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: i == idx ? Colors.black : Colors.white70),
+                    ),
                   ),
                 ),
             ],
@@ -446,27 +617,9 @@ class _AyahScrubber extends StatelessWidget {
   }
 }
 
-class _QueueBar extends StatelessWidget {
-  final AudioProvider audio;
-  const _QueueBar({required this.audio});
-  @override
-  Widget build(BuildContext context) {
-    final surah = audio.currentSurahObj;
-    if (surah == null) return const SizedBox.shrink();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-      child: Row(
-        children: [
-          const Icon(Icons.queue_music_rounded, color: Colors.white54, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text('Surah ${surah.transliteration} • ${surah.ayahCount} ayat', style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// ---------------------------------------------------------------------------
+// YouTube murottal
+// ---------------------------------------------------------------------------
 
 class _YouTubeTab extends StatefulWidget {
   const _YouTubeTab();
@@ -492,11 +645,7 @@ class _YouTubeTabState extends State<_YouTubeTab> {
       _controller = YoutubePlayerController.fromVideoId(
         videoId: c.videoId,
         autoPlay: true,
-        params: const YoutubePlayerParams(
-          showFullscreenButton: true,
-          showControls: true,
-          strictRelatedVideos: true,
-        ),
+        params: const YoutubePlayerParams(showFullscreenButton: true, showControls: true, strictRelatedVideos: true),
       );
       _currentTitle = c.title;
       _isPlaylist = false;
@@ -527,15 +676,15 @@ class _YouTubeTabState extends State<_YouTubeTab> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
       children: [
         // The embedded player sits at the top and stays while you browse.
         if (_controller != null) ...[
           ClipRRect(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
             child: YoutubePlayer(controller: _controller!, aspectRatio: 16 / 9),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               Icon(_isPlaylist ? Icons.playlist_play_rounded : Icons.smart_display_rounded, color: Colors.white54, size: 16),
@@ -545,58 +694,69 @@ class _YouTubeTabState extends State<_YouTubeTab> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
         ],
 
-        const Text('Putar lengkap (playlist)', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
+        const Text('Putar lengkap', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 3),
         const Text('Bersambung otomatis — seperti memutar album.', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
         const SizedBox(height: 12),
         for (final c in YoutubeLibrary.playlists)
-          _YtCard(
-            clip: c,
-            badge: Icons.playlist_play_rounded,
-            onTap: () => _openPlaylist(c),
-          ),
+          _YtTile(clip: c, badge: Icons.playlist_play_rounded, onTap: () => _openPlaylist(c)),
 
         const SizedBox(height: 22),
         const Text('Rekomendasi', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
-        const Text('Rekaman pilihan dari YouTube.', style: TextStyle(color: Colors.white54, fontSize: 12.5)),
         const SizedBox(height: 12),
         for (final c in YoutubeLibrary.clips)
-          _YtCard(
-            clip: c,
-            badge: Icons.play_arrow_rounded,
-            onTap: () => _openVideo(c),
-          ),
+          _YtTile(clip: c, badge: Icons.play_arrow_rounded, onTap: () => _openVideo(c)),
       ],
     );
   }
 }
 
-class _YtCard extends StatelessWidget {
+class _YtTile extends StatelessWidget {
+  const _YtTile({required this.clip, required this.badge, required this.onTap});
   final YoutubeClip clip;
   final IconData badge;
   final VoidCallback onTap;
-  const _YtCard({required this.clip, required this.badge, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white.withValues(alpha: 0.07),
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(12)),
-          child: Icon(badge, color: Colors.white),
+    return PressScale(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
-        title: Text(clip.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5)),
-        subtitle: Text(clip.channel, style: const TextStyle(color: Colors.white38, fontSize: 11.5)),
-        trailing: const Icon(Icons.play_circle_fill_rounded, color: Colors.white38, size: 22),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFFFF4B4B), Color(0xFFB3121B)]),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(badge, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(clip.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5, height: 1.25)),
+                  const SizedBox(height: 2),
+                  Text(clip.channel, style: const TextStyle(color: Colors.white38, fontSize: 11.5)),
+                ],
+              ),
+            ),
+            const Icon(Icons.play_circle_fill_rounded, color: Colors.white38, size: 24),
+          ],
+        ),
       ),
     );
   }

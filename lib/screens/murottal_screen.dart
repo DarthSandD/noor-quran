@@ -5,7 +5,9 @@ import '../data/repository.dart';
 import '../models/models.dart';
 import '../state/audio_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/artwork.dart';
 import '../widgets/motion.dart';
+import '../widgets/reciter_avatar.dart';
 import 'player_screen.dart';
 import 'reciter_screen.dart';
 
@@ -127,7 +129,7 @@ class _MurottalScreenState extends State<MurottalScreen> {
                         context,
                         MaterialPageRoute(builder: (_) => ReciterScreen(reciterId: r.id)),
                       ),
-                      leading: _Avatar(letter: r.name.trim().split(' ').first.characters.first, size: 46),
+                      leading: ReciterAvatar(name: r.name, seed: r.id, size: 46, radius: 14),
                       title: Text(r.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
                       subtitle: Text(
                         '$moshafCount riwayat • ${r.moshafs.first.surahTotal} surah',
@@ -186,16 +188,10 @@ class _NowPlayingCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
+            SizedBox(
               width: 52,
               height: 52,
-              decoration: BoxDecoration(gradient: Grad.goldSheen, borderRadius: BorderRadius.circular(14)),
-              child: Center(
-                child: Text(
-                  surah?.name ?? '﷽',
-                  style: const TextStyle(fontFamily: 'AmiriQuran', fontSize: 20, color: AppColors.emeraldDeep),
-                ),
-              ),
+              child: SurahArt(number: surah?.number ?? 1, radius: 14, showNumber: false),
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -236,7 +232,7 @@ class _FeaturedTile extends StatelessWidget {
         width: 96,
         child: Column(
           children: [
-            _Avatar(letter: reciter.name.trim().split(' ').first.characters.first, size: 84, radius: 26),
+            ReciterAvatar(name: reciter.name, seed: reciter.id, size: 84, radius: 26),
             const SizedBox(height: 8),
             Text(
               reciter.name,
@@ -245,32 +241,6 @@ class _FeaturedTile extends StatelessWidget {
               style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 1.25, color: scheme.onSurface.withValues(alpha: 0.85)),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Avatar extends StatelessWidget {
-  final String letter;
-  final double size;
-  final double radius;
-  const _Avatar({required this.letter, required this.size, this.radius = 15});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        gradient: Grad.goldSheen,
-        borderRadius: BorderRadius.circular(radius),
-        boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.3), blurRadius: 14, offset: const Offset(0, 6))],
-      ),
-      child: Center(
-        child: Text(
-          letter,
-          style: TextStyle(color: AppColors.emeraldDeep, fontSize: size * 0.4, fontWeight: FontWeight.w800),
         ),
       ),
     );

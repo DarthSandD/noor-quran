@@ -64,6 +64,16 @@ class Motion {
   static const fast = Duration(milliseconds: 180);
   static const med = Duration(milliseconds: 320);
   static const slow = Duration(milliseconds: 560);
+
+  /// Slightly springy curve for entrances that should feel alive.
+  static const spring = Curves.easeOutBack;
+
+  /// Elevation shadows, in one place so every surface casts the same light.
+  static List<BoxShadow> shadow(Color tint, {double alpha = 0.06, double blur = 18, double y = 6}) =>
+      [BoxShadow(color: tint.withValues(alpha: alpha), blurRadius: blur, offset: Offset(0, y))];
+
+  static List<BoxShadow> glow(Color color, {double alpha = 0.35, double blur = 28, double y = 12}) =>
+      [BoxShadow(color: color.withValues(alpha: alpha), blurRadius: blur, offset: Offset(0, y))];
 }
 
 class AppTheme {

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +8,8 @@ import 'dart:ui' as ui;
 import '../theme/app_theme.dart';
 import '../widgets/motion.dart';
 import '../widgets/brand.dart';
+import '../widgets/artwork.dart';
+import '../widgets/reciter_avatar.dart';
 import '../app/app_shell.dart';
 import '../state/settings_provider.dart';
 import '../state/qiblah_provider.dart';
@@ -195,61 +199,92 @@ class _ContinueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = (ayah / surah.ayahCount).clamp(0.0, 1.0);
+    final palette = paletteFor(surah.number);
     return PressScale(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          gradient: Grad.emerald,
+          gradient: LinearGradient(
+            colors: [palette.deep, palette.mid],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(28),
-          boxShadow: [BoxShadow(color: AppColors.emeraldDeep.withValues(alpha: 0.34), blurRadius: 30, offset: const Offset(0, 14))],
+          boxShadow: Motion.glow(palette.mid, alpha: 0.38, blur: 30, y: 14),
         ),
         child: Stack(
           children: [
+            // Generated cover bleeding off the right edge — the "album" cue.
             Positioned(
-              right: -22,
-              top: -26,
-              child: Opacity(opacity: 0.12, child: const NoorMark(size: 140, glow: false, color: Colors.white)),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
-                      child: const Text('LANJUT MEMBACA', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
-                    ),
-                    const Spacer(),
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), shape: BoxShape.circle),
-                      child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
-                    ),
-                  ],
+              right: -18,
+              top: -14,
+              bottom: -14,
+              child: Opacity(
+                opacity: 0.55,
+                child: SizedBox(
+                  width: 150,
+                  child: SurahArt(number: surah.number, juz: surah.ayahs.first.juz, radius: 26, showNumber: false),
                 ),
-                const SizedBox(height: 16),
-                Text('Surah ${surah.transliteration}', style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-                const SizedBox(height: 3),
-                Text('${surah.nameEn} • Ayat $ayah dari ${surah.ayahCount}', style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontSize: 13, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: progress),
-                    duration: Motion.slow,
-                    curve: Motion.curve,
-                    builder: (_, v, _) => LinearProgressIndicator(
-                      value: v,
-                      minHeight: 6,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
-                      valueColor: const AlwaysStoppedAnimation(AppColors.goldSoft),
-                    ),
+              ),
+            ),
+            // Keep the text side readable over the artwork.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: LinearGradient(
+                    colors: [palette.deep.withValues(alpha: 0.92), palette.deep.withValues(alpha: 0.15)],
+                    stops: const [0.35, 1.0],
                   ),
                 ),
-              ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20)),
+                        child: const Text('LANJUT MEMBACA', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: Motion.shadow(Colors.black, alpha: 0.3, blur: 16, y: 6),
+                        ),
+                        child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 30),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+                  Text('Surah ${surah.transliteration}', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                  const SizedBox(height: 3),
+                  Text('${surah.nameEn} • Ayat $ayah dari ${surah.ayahCount}', style: TextStyle(color: Colors.white.withValues(alpha: 0.82), fontSize: 13, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 16),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: progress),
+                      duration: Motion.slow,
+                      curve: Motion.curve,
+                      builder: (_, v, _) => LinearProgressIndicator(
+                        value: v,
+                        minHeight: 6,
+                        backgroundColor: Colors.white.withValues(alpha: 0.22),
+                        valueColor: AlwaysStoppedAnimation(palette.accent),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -384,13 +419,16 @@ class _QuickGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Pair each shortcut with one of the brand palettes so the home screen
+    // feels like the rest of the app — gradient tiles with a Khatam motif
+    // overlay, instead of flat colored squares.
     final items = [
-      _QA(Icons.explore_rounded, 'Kiblat', const Color(0xFF16A085), (c) => _goTab(c, ShellTabs.qiblah)),
-      _QA(Icons.fingerprint_rounded, 'Tasbih', const Color(0xFFD4AF37), (c) => _go(c, const TasbihScreen())),
-      _QA(Icons.auto_stories_rounded, 'Qur\'an', const Color(0xFF8E44AD), (c) => _goTab(c, ShellTabs.quran)),
-      _QA(Icons.diamond_rounded, 'Asmaul Husna', const Color(0xFF2980B9), (c) => _go(c, const AsmaScreen())),
-      _QA(Icons.radio_rounded, 'Radio Qur\'an', const Color(0xFFE67E22), (c) => _go(c, const RadioScreen())),
-      _QA(Icons.favorite_rounded, 'Doa & Dzikir', const Color(0xFFC0392B), (c) => _goTab(c, ShellTabs.dua)),
+      _QA(Icons.explore_rounded, 'Kiblat', 0, (c) => _goTab(c, ShellTabs.qiblah)),
+      _QA(Icons.fingerprint_rounded, 'Tasbih', 1, (c) => _go(c, const TasbihScreen())),
+      _QA(Icons.auto_stories_rounded, 'Qur\'an', 2, (c) => _goTab(c, ShellTabs.quran)),
+      _QA(Icons.diamond_rounded, 'Asmaul Husna', 3, (c) => _go(c, const AsmaScreen())),
+      _QA(Icons.radio_rounded, 'Radio Qur\'an', 4, (c) => _go(c, const RadioScreen())),
+      _QA(Icons.favorite_rounded, 'Doa & Dzikir', 5, (c) => _goTab(c, ShellTabs.dua)),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -412,9 +450,9 @@ class _QuickGrid extends StatelessWidget {
 class _QA {
   final IconData icon;
   final String label;
-  final Color color;
+  final int paletteIdx;
   final void Function(BuildContext) onTap;
-  _QA(this.icon, this.label, this.color, this.onTap);
+  _QA(this.icon, this.label, this.paletteIdx, this.onTap);
 }
 
 class _QuickTile extends StatelessWidget {
@@ -423,36 +461,56 @@ class _QuickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
+    final palette = kArtPalettes[item.paletteIdx % kArtPalettes.length];
     return PressScale(
       onTap: () => item.onTap(context),
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? AppColors.nightCard : Colors.white,
+          gradient: LinearGradient(
+            colors: [palette.deep, palette.mid],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-          boxShadow: isDark ? null : [BoxShadow(color: AppColors.ink.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 5))],
+          boxShadow: [BoxShadow(color: palette.mid.withValues(alpha: 0.32), blurRadius: 14, offset: const Offset(0, 6))],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [item.color.withValues(alpha: 0.22), item.color.withValues(alpha: 0.1)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            // Faint Khatam motif so the tile shares the app's cover language.
+            Positioned(
+              right: -12,
+              top: -12,
+              child: Opacity(
+                opacity: 0.22,
+                child: SizedBox(
+                  width: 70,
+                  height: 70,
+                  child: CustomPaint(painter: _TileStar(accent: palette.accent)),
                 ),
-                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(item.icon, color: item.color, size: 22),
             ),
-            const SizedBox(height: 9),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Text(item.label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                    ),
+                    child: Icon(item.icon, color: Colors.white, size: 22),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Text(item.label,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: -0.2)),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -461,12 +519,36 @@ class _QuickTile extends StatelessWidget {
   }
 }
 
-class _FeaturedReciters extends StatelessWidget {
-  const _FeaturedReciters();
+class _TileStar extends CustomPainter {
+  _TileStar({required this.accent});
+  final Color accent;
 
   @override
-  Widget build(BuildContext context) {
-    final reciters = QuranRepository.instance.reciters.take(12).toList();
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = accent.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final c = Offset(size.width / 2, size.height / 2);
+    final pts = List.generate(8, (i) {
+      final a = i * math.pi / 4;
+      final r = (i.isEven) ? size.width * 0.46 : size.width * 0.22;
+      return c.translate(r * math.cos(a), r * math.sin(a));
+    });
+    final path = Path()..addPolygon(pts, true);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_TileStar old) => old.accent != accent;
+  }
+
+  class _FeaturedReciters extends StatelessWidget {
+    const _FeaturedReciters();
+
+    @override
+    Widget build(BuildContext context) {
+      final reciters = QuranRepository.instance.reciters.take(12).toList();
     if (reciters.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
@@ -486,21 +568,7 @@ class _FeaturedReciters extends StatelessWidget {
                 width: 88,
                 child: Column(
                   children: [
-                    Container(
-                      height: 74,
-                      width: 74,
-                      decoration: BoxDecoration(
-                        gradient: Grad.goldSheen,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [BoxShadow(color: AppColors.gold.withValues(alpha: 0.32), blurRadius: 16, offset: const Offset(0, 8))],
-                      ),
-                      child: Center(
-                        child: Text(
-                          r.name.trim().split(' ').first.characters.first,
-                          style: const TextStyle(color: AppColors.emeraldDeep, fontSize: 28, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ),
+                    ReciterAvatar(name: r.name, seed: r.id, size: 74, radius: 24),
                     const SizedBox(height: 8),
                     Text(r.name, maxLines: 2, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, height: 1.25, color: scheme.onSurface.withValues(alpha: 0.85))),
                   ],

@@ -58,74 +58,83 @@ class TasbihScreen extends StatelessWidget {
             style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: scheme.onSurface.withValues(alpha: 0.5)),
           ),
           const Spacer(),
-          Center(
-            child: SizedBox(
-              width: 282,
-              height: 282,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 282,
-                    height: 282,
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: progress),
-                      duration: Motion.med,
-                      curve: Motion.curve,
-                      builder: (_, v, _) => CircularProgressIndicator(
-                        value: v,
-                        strokeWidth: 11,
-                        backgroundColor: scheme.surfaceContainerHighest,
-                        valueColor: const AlwaysStoppedAnimation(AppColors.gold),
-                        strokeCap: StrokeCap.round,
-                      ),
-                    ),
-                  ),
-                  PressScale(
-                    scale: 0.94,
-                    onTap: () {
-                      if (s.hapticsEnabled) HapticFeedback.mediumImpact();
-                      // `bumpTasbih` notifies listeners; read the new count from
-                      // the provider afterwards instead of double-vibrating.
-                      s.bumpTasbih();
-                      final now = s.tasbihCount;
-                      if (now % s.tasbihTarget == 0) {
-                        if (s.hapticsEnabled) HapticFeedback.heavyImpact();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('${s.tasbihTarget} kali selesai — Alhamdulillah')),
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: 224,
-                      height: 224,
-                      decoration: BoxDecoration(
-                        gradient: Grad.emerald,
-                        shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: AppColors.emerald.withValues(alpha: 0.42), blurRadius: 34, offset: const Offset(0, 14))],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          AnimatedSwitcher(
-                            duration: Motion.fast,
-                            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
-                            child: Text(
-                              '${s.tasbihCount}',
-                              key: ValueKey(s.tasbihCount),
-                              style: const TextStyle(color: Colors.white, fontSize: 70, fontWeight: FontWeight.w800, letterSpacing: -2.5),
+                    Center(
+                      child: SizedBox(
+                        width: 282,
+                        height: 282,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Faint outer ring so the pad feels premium even when idle.
+                            Container(
+                              width: 282,
+                              height: 282,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: scheme.primary.withValues(alpha: 0.14), width: 1),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text('DARI ${s.tasbihTarget}', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 1.8)),
-                        ],
+                            SizedBox(
+                              width: 282,
+                              height: 282,
+                              child: TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0, end: progress),
+                                duration: Motion.med,
+                                curve: Motion.curve,
+                                builder: (_, v, _) => CircularProgressIndicator(
+                                  value: v,
+                                  strokeWidth: 11,
+                                  backgroundColor: scheme.surfaceContainerHighest,
+                                  valueColor: const AlwaysStoppedAnimation(AppColors.gold),
+                                  strokeCap: StrokeCap.round,
+                                ),
+                              ),
+                            ),
+                            PressScale(
+                              scale: 0.94,
+                              onTap: () {
+                                if (s.hapticsEnabled) HapticFeedback.mediumImpact();
+                                // `bumpTasbih` notifies listeners; read the new count from
+                                // the provider afterwards instead of double-vibrating.
+                                s.bumpTasbih();
+                                final now = s.tasbihCount;
+                                if (now % s.tasbihTarget == 0) {
+                                  if (s.hapticsEnabled) HapticFeedback.heavyImpact();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('${s.tasbihTarget} kali selesai — Alhamdulillah')),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                width: 224,
+                                height: 224,
+                                decoration: BoxDecoration(
+                                  gradient: Grad.emerald,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(color: AppColors.emerald.withValues(alpha: 0.42), blurRadius: 34, offset: const Offset(0, 14))],
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    AnimatedSwitcher(
+                                      duration: Motion.fast,
+                                      transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: FadeTransition(opacity: anim, child: child)),
+                                      child: Text(
+                                        '${s.tasbihCount}',
+                                        key: ValueKey(s.tasbihCount),
+                                        style: const TextStyle(color: Colors.white, fontSize: 70, fontWeight: FontWeight.w800, letterSpacing: -2.5),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text('DARI ${s.tasbihTarget}', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 1.8)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
           const Spacer(),
           Text('Target dzikir', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7))),
           const SizedBox(height: 10),

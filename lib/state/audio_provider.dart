@@ -130,6 +130,22 @@ class AudioProvider extends ChangeNotifier {
     }
   }
 
+  /// Plays a pre-shuffled run of surahs (see [AudioService.playShuffled]).
+  Future<void> playShuffled({
+    required Reciter reciter,
+    required Moshaf moshaf,
+    required List<int> surahNumbers,
+  }) async {
+    _error = null;
+    try {
+      await _attach();
+      await _svc.playShuffled(reciter: reciter, moshaf: moshaf, surahNumbers: surahNumbers);
+    } catch (e) {
+      _error = 'Gagal memutar: ${e.toString().split('\n').first}';
+      if (!_disposed) notifyListeners();
+    }
+  }
+
   Future<void> playAyahRecitation({
     required AyahReciter reciter,
     required int surahNumber,
@@ -189,6 +205,13 @@ class AudioProvider extends ChangeNotifier {
   Future<void> stop() async {
     await _attach();
     await _svc.stop();
+  }
+
+  /// Rebuilds the current queue in random order (current surah stays first).
+  Future<void> shuffleQueue() async {
+    await _attach();
+    await _svc.shuffleQueue();
+    if (!_disposed) notifyListeners();
   }
 
   void setVerseRepeat(bool v) {

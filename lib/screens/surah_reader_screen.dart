@@ -9,7 +9,7 @@ import '../models/models.dart';
 import '../state/settings_provider.dart';
 import '../state/audio_provider.dart';
 import '../theme/app_theme.dart';
-import '../widgets/brand.dart';
+import '../widgets/artwork.dart';
 import '../widgets/motion.dart';
 import '../widgets/reader_settings_sheet.dart';
 import '../widgets/reciter_picker.dart';
@@ -221,20 +221,35 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = paletteFor(surah.number, juz: ((surah.number - 1) ~/ 20) + 1);
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 6, 12, 4),
       padding: const EdgeInsets.fromLTRB(6, 6, 12, 16),
       decoration: BoxDecoration(
-        gradient: Grad.emerald,
+        gradient: LinearGradient(colors: [palette.deep, palette.mid], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: AppColors.emerald.withValues(alpha: 0.28), blurRadius: 20, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: palette.mid.withValues(alpha: 0.28), blurRadius: 20, offset: const Offset(0, 8))],
       ),
       child: Stack(
         children: [
-          Positioned(
-            right: -20,
-            top: -18,
-            child: Opacity(opacity: 0.12, child: const NoorMark(size: 120, glow: false, color: Colors.white)),
+          // Generated cover motif behind the header text.
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: SurahArt(number: surah.number, radius: 0, showNumber: false),
+            ),
+          ),
+          // Soft dark gradient so the text reads cleanly on top of the artwork.
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  colors: [palette.deep.withValues(alpha: 0.85), Colors.black.withValues(alpha: 0.25)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+              ),
+            ),
           ),
           Column(
             children: [
@@ -249,13 +264,13 @@ class _Header extends StatelessWidget {
                   IconButton(icon: const Icon(Icons.headphones_rounded, color: Colors.white), onPressed: onPlay),
                 ],
               ),
-              Text(surah.name, style: const TextStyle(fontFamily: 'AmiriQuran', color: Colors.white, fontSize: 34)),
+              Text(surah.name, style: const TextStyle(fontFamily: 'AmiriQuran', color: Colors.white, fontSize: 36)),
               const SizedBox(height: 4),
               Text('Surah ${surah.transliteration}', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 6),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: 0.18))),
                 child: Text(
                   '${surah.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'} • ${surah.ayahCount} ayat • Surah ke-${surah.number}',
                   style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w600),
