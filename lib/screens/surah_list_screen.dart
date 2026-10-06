@@ -144,12 +144,16 @@ class _SurahTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
     final name = lang == 'id' ? surah.nameId : surah.nameEn;
+    final palette = paletteFor(surah.number, juz: surah.ayahs.first.juz);
+
+    // The familiar Qur'an-app row: star badge → names → Arabic plate.
+    // Modified here with the surah's own palette so the list still feels Noor.
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
       child: PressScale(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SurahReaderScreen(surahNumber: surah.number))),
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
           decoration: BoxDecoration(
             color: isDark ? AppColors.nightCard : Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -158,15 +162,9 @@ class _SurahTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // A generated cover instead of a plain number chip — this is what
-              // gives the list its album-shelf character.
               Hero(
                 tag: 'art-${surah.number}',
-                child: SizedBox(
-                  width: 54,
-                  height: 54,
-                  child: SurahArt(number: surah.number, juz: surah.ayahs.first.juz, radius: 15, label: null, showNumber: true),
-                ),
+                child: SurahStarBadge(number: surah.number, size: 46, juz: surah.ayahs.first.juz),
               ),
               const SizedBox(width: 13),
               Expanded(
@@ -175,17 +173,66 @@ class _SurahTile extends StatelessWidget {
                   children: [
                     Text(surah.transliteration, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, letterSpacing: -0.2)),
                     const SizedBox(height: 3),
-                    Text('$name • ${surah.ayahCount} ayat • ${surah.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'}',
-                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: scheme.onSurface.withValues(alpha: 0.55))),
+                    Row(
+                      children: [
+                        _MetaChip(label: surah.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah', color: palette.accent),
+                        const SizedBox(width: 6),
+                        Text('$name • ${surah.ayahCount} ayat',
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: scheme.onSurface.withValues(alpha: 0.55))),
+                      ],
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              Text(surah.name, style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 23, color: scheme.primary.withValues(alpha: 0.9))),
+              // Ornamental Arabic name plate — the classic Qur'an-app flourish.
+              Container(
+                constraints: const BoxConstraints(minWidth: 54),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [palette.mid.withValues(alpha: 0.16), palette.deep.withValues(alpha: 0.08)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: palette.accent.withValues(alpha: 0.30)),
+                ),
+                child: Text(
+                  surah.name,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 22, height: 1.0, color: _ink(scheme, palette)),
+                ),
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  /// Keep the Arabic legible in both themes: dark ink on light, accent on dark.
+  static Color _ink(ColorScheme scheme, ArtPalette palette) {
+    if (scheme.brightness == Brightness.dark) return palette.accent;
+    return Color.lerp(palette.deep, Colors.black, 0.35)!;
+  }
+}
+
+/// Tiny tinted label for revelation place.
+class _MetaChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _MetaChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.2, color: color)),
     );
   }
 }

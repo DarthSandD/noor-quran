@@ -198,3 +198,119 @@ class _KhatamPainter extends CustomPainter {
   @override
   bool shouldRepaint(_KhatamPainter old) => old.accent != accent || old.seed != seed;
 }
+
+/// The classic Qur'an-app surah marker: an eight-pointed star (Rub el Hizb)
+/// framing the surah number.
+///
+/// Nearly every Qur'an app uses this shape, which is exactly why it reads
+/// instantly as "surah list". Here it is tinted with the surah's own palette so
+/// the familiar marker still belongs to Noor's visual language.
+class SurahStarBadge extends StatelessWidget {
+  const SurahStarBadge({
+    super.key,
+    required this.number,
+    this.size = 46,
+    this.juz,
+    this.solid = false,
+  });
+
+  final int number;
+  final double size;
+  final int? juz;
+
+  /// `true` fills the star with the palette gradient (bolder, used in the
+  /// player); `false` draws the tinted outline most lists use.
+  final bool solid;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = paletteFor(number, juz: juz);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _StarBadgePainter(
+          fill: solid ? palette.mid : palette.mid.withValues(alpha: 0.14),
+          stroke: solid ? palette.accent.withValues(alpha: 0.6) : palette.accent,
+          numberColor: solid ? Colors.white : palette.accent,
+          number: number,
+          solid: solid,
+        ),
+      ),
+    );
+  }
+}
+
+class _StarBadgePainter extends CustomPainter {
+  _StarBadgePainter({
+    required this.fill,
+    required this.stroke,
+    required this.numberColor,
+    required this.number,
+    required this.solid,
+  });
+
+  final Color fill;
+  final Color stroke;
+  final Color numberColor;
+  final int number;
+  final bool solid;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final r = size.width * 0.47;
+    final path = _star8(c, r);
+
+    if (solid) {
+      // Soft bloom behind the solid star so it reads as a lit marker.
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = stroke.withValues(alpha: 0.30)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, size.width * 0.10),
+      );
+    }
+    canvas.drawPath(path, Paint()..color = fill);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = stroke
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * (solid ? 0.05 : 0.045)
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    // The number sits in the star's heart.
+    final tp = TextPainter(
+      text: TextSpan(
+        text: '$number',
+        style: TextStyle(
+          color: numberColor,
+          fontSize: size.width * 0.30,
+          fontWeight: FontWeight.w800,
+          height: 1.0,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
+  }
+
+  /// Eight-pointed star: two squares rotated 45° apart.
+  Path _star8(Offset c, double r) {
+    final path = Path();
+    for (final rot in [0.0, math.pi / 4]) {
+      final pts = List.generate(4, (i) {
+        final a = rot + i * math.pi / 2;
+        return c.translate(r * math.cos(a), r * math.sin(a));
+      });
+      path.addPolygon(pts, true);
+    }
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(_StarBadgePainter old) =>
+      old.fill != fill || old.stroke != stroke || old.numberColor != numberColor || old.number != number || old.solid != solid;
+}

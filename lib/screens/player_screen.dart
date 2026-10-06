@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../data/youtube_library.dart';
+import '../audio/audio_service.dart';
 import '../models/models.dart';
 import '../state/audio_provider.dart';
 import '../theme/app_theme.dart';
@@ -186,18 +187,25 @@ class _NowPlaying extends StatelessWidget {
     final svc = audio.service;
     final surah = audio.currentSurahObj;
     final hasQueue = svc.title.isNotEmpty;
+    final isRadio = svc.mode == AudioMode.radio;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       children: [
-        _Art(surah: surah, playing: audio.playing),
+        _Art(surah: surah, playing: audio.playing, radioName: isRadio ? svc.title : null),
         const SizedBox(height: 28),
         _TitleRow(audio: audio, hasQueue: hasQueue),
         if (hasQueue) ...[
           const SizedBox(height: 18),
-          _Progress(audio: audio),
-          const SizedBox(height: 10),
-          _Controls(audio: audio),
+          // A live stream has no duration: show the LIVE equalizer ribbon
+          // instead of a scrubber that could never move.
+          if (isRadio)
+            _RadioRibbon(playing: audio.playing, palette: paletteFor(1))
+          else ...[
+            _Progress(audio: audio),
+            const SizedBox(height: 10),
+            _Controls(audio: audio),
+          ],
           const SizedBox(height: 16),
           _BottomRow(audio: audio),
           if (surah != null && svc.mode.name == 'ayah') ...[
@@ -218,15 +226,74 @@ class _NowPlaying extends StatelessWidget {
   }
 }
 
-/// Large square artwork with a deep shadow — the visual anchor of the screen.
-class _Art extends StatelessWidget {
-  const _Art({required this.surah, required this.playing});
-  final Surah? surah;
+/// The LIVE ribbon shown on the player while a radio station streams.
+class _RadioRibbon extends StatelessWidget {
+  const _RadioRibbon({required this.playing, required this.palette});
   final bool playing;
+  final ArtPalette palette;
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFF3B5C).withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: const Color(0xFFFF3B5C).withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              PulseDot(size: 8, color: const Color(0xFFFF3B5C)),
+              const SizedBox(width: 9),
+              Text(
+                playing ? 'SEDANG LIVE' : 'LIVE DIJEDA',
+                style: const TextStyle(color: Color(0xFFFF8FA3), fontSize: 11.5, fontWeight: FontWeight.w900, letterSpacing: 1.4),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        // The equalizer ribbon itself — the "audio is flowing" signal.
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SizedBox(
+            height: 34,
+            child: EqualizerBars(active: playing, color: palette.accent, bars: 44, height: 34, barWidth: 4),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.wifi_tethering_rounded, size: 15, color: Colors.white.withValues(alpha: 0.5)),
+            const SizedBox(width: 6),
+            Text('Streaming langsung • tanpa batas waktu', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11.5, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Large square artwork with a deep shadow — the visual anchor of the screen.
+///
+/// For a radio station there is no surah to draw, so it renders a broadcast
+/// tile in the station's own colour with a radiating-signal motif.
+class _Art extends StatelessWidget {
+  const _Art({required this.surah, required this.playing, this.radioName});
+  final Surah? surah;
+  final bool playing;
+  final String? radioName;
+
+  @override
+  Widget build(BuildContext context) {
+    final isRadio = radioName != null;
     final n = surah?.number ?? 1;
+    final palette = isRadio ? _radioPalette(radioName!) : paletteFor(n);
+
     return Center(
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.9, end: 1.0),
@@ -242,7 +309,7 @@ class _Art extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: paletteFor(n).glow.withValues(alpha: playing ? 0.5 : 0.32),
+                color: palette.glow.withValues(alpha: playing ? 0.5 : 0.32),
                 blurRadius: playing ? 58 : 40,
                 spreadRadius: playing ? 2 : 0,
                 offset: const Offset(0, 22),
@@ -250,20 +317,116 @@ class _Art extends StatelessWidget {
               const BoxShadow(color: Colors.black54, blurRadius: 30, offset: Offset(0, 14)),
             ],
           ),
-          child: Hero(
-            tag: 'art-$n',
-            child: SurahArt(
-              number: n,
-              juz: surah?.ayahs.first.juz,
-              radius: 24,
-              label: surah?.name,
-              showNumber: false,
-            ),
-          ),
+          child: isRadio
+              ? _RadioArt(palette: palette, name: radioName!, playing: playing)
+              : Hero(
+                  tag: 'art-$n',
+                  child: SurahArt(
+                    number: n,
+                    juz: surah?.ayahs.first.juz,
+                    radius: 24,
+                    label: surah?.name,
+                    showNumber: false,
+                  ),
+                ),
         ),
       ),
     );
   }
+}
+
+/// Broadcast tile shown in place of surah art while a radio station plays.
+class _RadioArt extends StatelessWidget {
+  const _RadioArt({required this.palette, required this.name, required this.playing});
+  final ArtPalette palette;
+  final String name;
+  final bool playing;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [palette.deep, palette.mid, palette.glow],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CustomPaint(painter: _SignalPainter(color: palette.accent)),
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+                    ),
+                    child: const Icon(Icons.radio_rounded, color: Colors.white, size: 46),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    name,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3, height: 1.25),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PulseDot(size: 7, color: Colors.white),
+                      const SizedBox(width: 7),
+                      Text(playing ? 'LIVE' : 'PAUSED', style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 10.5, fontWeight: FontWeight.w900, letterSpacing: 1.6)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Concentric radiating arcs — a broadcast motif for the radio art.
+class _SignalPainter extends CustomPainter {
+  _SignalPainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.16)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6;
+    for (var i = 1; i <= 4; i++) {
+      canvas.drawCircle(c, size.width * 0.13 * i, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SignalPainter old) => old.color != color;
+}
+
+/// Deterministic palette for a radio station, seeded by its name.
+ArtPalette _radioPalette(String name) {
+  var h = 0;
+  for (final c in name.codeUnits) {
+    h = (h * 31 + c) & 0x7fffffff;
+  }
+  return kArtPalettes[h % kArtPalettes.length];
 }
 
 class _TitleRow extends StatelessWidget {

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../data/repository.dart';
+import '../audio/audio_service.dart';
 import '../models/models.dart';
 import '../state/audio_provider.dart';
-import '../theme/app_theme.dart';
 import '../widgets/artwork.dart';
 import '../widgets/motion.dart';
 import '../widgets/reciter_avatar.dart';
@@ -177,43 +177,94 @@ class _NowPlayingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final svc = audio.service;
     final surah = audio.currentSurahObj;
+    final isRadio = svc.mode == AudioMode.radio;
+    final palette = isRadio ? _radioPalette(svc.title) : paletteFor(surah?.number ?? 1);
+
     return PressScale(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerScreen())),
       child: Container(
-        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          gradient: Grad.emeraldSoft,
+          gradient: LinearGradient(colors: [palette.deep, palette.mid], begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: AppColors.emeraldDeep.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
+          boxShadow: [BoxShadow(color: palette.mid.withValues(alpha: 0.34), blurRadius: 20, offset: const Offset(0, 10))],
         ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 52,
-              height: 52,
-              child: SurahArt(number: surah?.number ?? 1, radius: 14, showNumber: false),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(svc.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14.5)),
-                  const SizedBox(height: 2),
-                  Text(svc.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
-                ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    if (isRadio)
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+                        ),
+                        child: Icon(audio.playing ? Icons.graphic_eq_rounded : Icons.radio_rounded, color: Colors.white, size: 26),
+                      )
+                    else
+                      SizedBox(
+                        width: 52,
+                        height: 52,
+                        child: SurahArt(number: surah?.number ?? 1, radius: 14, showNumber: false),
+                      ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(svc.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14.5)),
+                          const SizedBox(height: 2),
+                          Text(svc.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(audio.playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: Colors.white, size: 40),
+                      onPressed: audio.toggle,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            IconButton(
-              icon: Icon(audio.playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: Colors.white, size: 40),
-              onPressed: audio.toggle,
-            ),
-          ],
+              // Radio gets the LIVE equalizer ribbon; surah/ayah gets a bar.
+              if (isRadio)
+                EqualizerBars(active: audio.playing, color: palette.accent)
+              else
+                LinearProgressIndicator(
+                  value: _progress(audio),
+                  minHeight: 2.5,
+                  backgroundColor: Colors.white.withValues(alpha: 0.14),
+                  valueColor: AlwaysStoppedAnimation(palette.accent),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  static double _progress(AudioProvider audio) {
+    final dur = audio.duration;
+    final pos = audio.position;
+    if (dur == null || dur.inMilliseconds <= 0) return 0.0;
+    return (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0);
+  }
+}
+
+/// Deterministic palette for a radio station, seeded by its name.
+ArtPalette _radioPalette(String name) {
+  var h = 0;
+  for (final c in name.codeUnits) {
+    h = (h * 31 + c) & 0x7fffffff;
+  }
+  return kArtPalettes[h % kArtPalettes.length];
 }
 
 class _FeaturedTile extends StatelessWidget {
@@ -255,6 +306,8 @@ class _RadioSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final radios = QuranRepository.instance.radios;
     final audio = context.watch<AudioProvider>();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
@@ -271,19 +324,61 @@ class _RadioSheet extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               controller: controller,
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 40),
               itemCount: radios.length,
               itemBuilder: (_, i) {
                 final r = radios[i];
                 final isCurrent = audio.service.radio?.id == r.id;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: Icon(Icons.radio_rounded, color: isCurrent ? AppColors.gold : null),
-                    title: Text(r.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text('Live 24 jam', style: TextStyle(fontSize: 11.5)),
-                    trailing: Icon(isCurrent && audio.playing ? Icons.equalizer_rounded : Icons.play_circle_fill_rounded),
+                final palette = _radioPalette(r.name);
+                final live = isCurrent && audio.playing;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: PressScale(
                     onTap: () => audio.playRadio(r),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isCurrent ? palette.mid.withValues(alpha: isDark ? 0.30 : 0.10) : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(18),
+                        border: isCurrent ? Border.all(color: palette.mid.withValues(alpha: 0.55), width: 1.2) : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [palette.deep, palette.mid], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            child: Icon(live ? Icons.graphic_eq_rounded : Icons.radio_rounded, color: Colors.white, size: 21),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(r.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    if (live) ...[
+                                      const PulseDot(size: 5, color: Color(0xFFFF3B5C)),
+                                      const SizedBox(width: 5),
+                                      const Text('LIVE', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 1.0, color: Color(0xFFFF5577))),
+                                    ] else
+                                      Text(isCurrent ? 'Terjeda' : 'Live 24 jam',
+                                          style: TextStyle(fontSize: 11.5, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(isCurrent && audio.playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                              color: isCurrent ? palette.mid : theme.colorScheme.primary, size: 30),
+                        ],
+                      ),
+                    ),
                   ),
                 );
               },

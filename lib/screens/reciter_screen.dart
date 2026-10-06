@@ -9,6 +9,7 @@ import '../state/audio_provider.dart';
 import '../state/settings_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/artwork.dart';
+import '../widgets/motion.dart';
 import '../widgets/reciter_avatar.dart';
 import 'player_screen.dart';
 
@@ -145,23 +146,55 @@ class ReciterScreen extends StatelessWidget {
             itemBuilder: (_, i) {
               final s = surahs[i];
               final isCurrent = isThisReciter && audio.service.currentSurah == s.number && audio.service.mode.name == 'surah';
-              return ListTile(
-                onTap: () {
-                  settings.setReciter(r.id, r.name, selected.id);
-                  audio.playSurah(reciter: r, moshaf: selected, surahNumber: s.number);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerScreen()));
-                },
-                leading: SizedBox(
-                  width: 46,
-                  height: 46,
-                  child: SurahArt(number: s.number, juz: s.ayahs.first.juz, radius: 13, showNumber: true),
-                ),
-                title: Text(s.transliteration, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: isCurrent ? theme.colorScheme.primary : null)),
-                subtitle: Text('${s.ayahCount} ayat • ${s.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'}', style: const TextStyle(fontSize: 11.5)),
-                trailing: Icon(
-                  isCurrent && audio.playing ? Icons.equalizer_rounded : Icons.play_arrow_rounded,
-                  color: isCurrent ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.35),
-                  size: 20,
+              final palette = paletteFor(s.number, juz: s.ayahs.first.juz);
+              final isDark = theme.brightness == Brightness.dark;
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: PressScale(
+                  onTap: () {
+                    settings.setReciter(r.id, r.name, selected.id);
+                    audio.playSurah(reciter: r, moshaf: selected, surahNumber: s.number);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PlayerScreen()));
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? palette.mid.withValues(alpha: isDark ? 0.30 : 0.10)
+                          : (isDark ? AppColors.nightCard : Colors.white),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isCurrent ? palette.mid.withValues(alpha: 0.55) : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+                        width: isCurrent ? 1.3 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        SurahStarBadge(number: s.number, size: 44, juz: s.ayahs.first.juz, solid: isCurrent),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(s.transliteration,
+                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: isCurrent ? palette.mid : null)),
+                              const SizedBox(height: 2),
+                              Text('${s.ayahCount} ayat • ${s.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'}',
+                                  style: const TextStyle(fontSize: 11.5)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(s.name, style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 21, height: 1.0, color: isDark ? palette.accent : Color.lerp(palette.deep, Colors.black, 0.35))),
+                        const SizedBox(width: 6),
+                        Icon(
+                          isCurrent && audio.playing ? Icons.equalizer_rounded : Icons.play_arrow_rounded,
+                          color: isCurrent ? palette.mid : theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               );
             },

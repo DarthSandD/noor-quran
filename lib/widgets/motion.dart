@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
@@ -246,4 +248,87 @@ class PageHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Animated equalizer bars — the universal "audio is playing" cue.
+///
+/// Used as a *ribbon* under the mini-player and the full player whenever a live
+/// radio stream is active (a stream has no duration, so a progress bar there
+/// would be meaningless). Also usable inline at any height.
+class EqualizerBars extends StatefulWidget {
+  const EqualizerBars({
+    super.key,
+    this.active = true,
+    required this.color,
+    this.bars = 28,
+    this.height = 3,
+    this.barWidth = 2,
+  });
+
+  final bool active;
+  final Color color;
+  final int bars;
+  final double height;
+  final double barWidth;
+
+  @override
+  State<EqualizerBars> createState() => _EqualizerBarsState();
+}
+
+class _EqualizerBarsState extends State<EqualizerBars> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: widget.height,
+      width: double.infinity,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (_, _) => CustomPaint(
+          painter: _EqPainter(
+            t: widget.active ? _c.value : 0.0,
+            color: widget.color,
+            bars: widget.bars,
+            barWidth: widget.barWidth,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EqPainter extends CustomPainter {
+  _EqPainter({required this.t, required this.color, required this.bars, required this.barWidth});
+  final double t;
+  final Color color;
+  final int bars;
+  final double barWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gap = size.width / bars;
+    final w = math.max(1.2, math.min(barWidth, gap * 0.6));
+    final paint = Paint()..color = color;
+    for (var i = 0; i < bars; i++) {
+      // Two overlapping sine waves so the pattern never reads as a simple loop.
+      final a = math.sin((i * 0.55) + t * math.pi * 2);
+      final b = math.sin((i * 0.23) - t * math.pi * 2 * 0.7);
+      final h = (0.22 + 0.78 * ((a + b) / 4 + 0.5).clamp(0.0, 1.0)) * size.height;
+      final x = i * gap + (gap - w) / 2;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(x, size.height - h, w, h), const Radius.circular(2)),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_EqPainter old) => old.t != t || old.color != color || old.bars != bars;
 }
