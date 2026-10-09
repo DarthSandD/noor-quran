@@ -77,6 +77,13 @@ class SettingsProvider extends ChangeNotifier {
     _arabicScale = p.getDouble('arabicScale') ?? 1.0;
     _arabicFont = p.getString('arabicFont') ?? 'AmiriQuran';
     _translationId = p.getString('translationId') ?? 'id.indonesian';
+    // Retired editions (e.g. the removed Arberry translation) must not linger in
+    // a saved preference, or the reader would request a file that no longer ships.
+    const validEditions = {'id.indonesian', 'en.sahih'};
+    if (!validEditions.contains(_translationId)) {
+      _translationId = 'id.indonesian';
+      _prefs?.setString('translationId', _translationId);
+    }
     _showTranslation = p.getBool('showTranslation') ?? true;
     _showTransliteration = p.getBool('showTransliteration') ?? false;
     _wordByWord = p.getBool('wordByWord') ?? false;

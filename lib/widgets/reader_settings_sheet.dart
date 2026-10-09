@@ -57,7 +57,6 @@ class ReaderSettingsSheet extends StatelessWidget {
                   for (final e in const [
                     ('id.indonesian', 'Bahasa Indonesia (Kemenag)'),
                     ('en.sahih', 'English — Saheeh International'),
-                    ('en.arberry', 'English — Arberry'),
                   ])
                     RadioListTile<String>(
                       value: e.$1,

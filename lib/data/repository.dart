@@ -115,15 +115,17 @@ class QuranRepository {
   }
 
   /// Returns the flat 6 236-entry translation list for an edition id.
+  ///
+  /// Unknown or retired edition ids fall back to Indonesian rather than
+  /// failing, so a preference saved by an older build can never break the app.
   Future<List<String>> translation(String editionId) async {
     final cached = _translations[editionId];
     if (cached != null) return cached;
     final file = switch (editionId) {
       'id.indonesian' => 't_id.json',
       'en.sahih' => 't_en.json',
-      'en.arberry' => 't_en_arberry.json',
       'id.jalalayn' => 'tafsir_id.json',
-      _ => 't_en.json',
+      _ => 't_id.json',
     };
     final list = await compute(_parseStringList, await _asset(file));
     _translations[editionId] = list;

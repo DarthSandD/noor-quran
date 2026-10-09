@@ -36,9 +36,8 @@ print("Loading sources...")
 ar = api_surahs("quran_uthmani_api.json")
 id_tr = flat("id_indonesian_api.json")
 en_sahih = flat("en_sahih.json")
-en_arb = flat("en_arberry.json")
 tafsir_id = flat("id_jalalayn.json")
-for nm, arr in [("id", id_tr), ("en_sahih", en_sahih), ("en_arberry", en_arb), ("tafsir", tafsir_id)]:
+for nm, arr in [("id", id_tr), ("en_sahih", en_sahih), ("tafsir", tafsir_id)]:
     assert len(arr) == 6236, (nm, len(arr))
 print("  all editions = 6236 ayahs OK")
 
@@ -132,13 +131,11 @@ assert gidx == 6236, gidx
 wr("quran.json", {"meta": {"edition": "quran-uthmani", "ayahCount": 6236, "surahCount": 114}, "surahs": surahs})
 wr("t_id.json", id_tr)
 wr("t_en.json", en_sahih)
-wr("t_en_arberry.json", en_arb)
 wr("tafsir_id.json", tafsir_id)
 wr("translations.json", {
     "editions": [
         {"id": "id.indonesian", "lang": "id", "name": "Kemenag — Bahasa Indonesia", "dir": "ltr"},
         {"id": "en.sahih", "lang": "en", "name": "Saheeh International", "dir": "ltr"},
-        {"id": "en.arberry", "lang": "en", "name": "A. J. Arberry", "dir": "ltr"},
     ],
     "tafsir": [{"id": "id.jalalayn", "lang": "id", "name": "Tafsir Jalalayn"}],
 })

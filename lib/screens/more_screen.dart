@@ -25,6 +25,9 @@ class MoreScreen extends StatelessWidget {
       'https://noor-quran-download.vercel.app/noor-quran.apk';
   static const String releasesUrl = 'https://github.com/DarthSandD/noor-quran/releases';
 
+  /// Served as a real static page by the web deployment (see `web/privacy-policy.html`).
+  static const String privacyUrl = 'https://noor-quran-wheat.vercel.app/privacy-policy.html';
+
   /// Opens the APK download.
   ///
   /// The launch mode matters per platform: `externalApplication` is what makes
@@ -151,7 +154,6 @@ class MoreScreen extends StatelessWidget {
                 title: const Text('Terjemahan', style: TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(switch (settings.translationId) {
                   'en.sahih' => 'English — Saheeh International',
-                  'en.arberry' => 'English — Arberry',
                   _ => 'Bahasa Indonesia (Kemenag)',
                 }, style: const TextStyle(fontSize: 12)),
                 trailing: const Icon(Icons.chevron_right_rounded),
@@ -164,6 +166,7 @@ class MoreScreen extends StatelessWidget {
             delay: const Duration(milliseconds: 210),
             child: _Group(children: [
               _Tile(icon: Icons.info_outline_rounded, paletteIdx: 1, title: 'Tentang Noor Qur\'an', subtitle: 'Sumber data & lisensi', onTap: () => _about(context)),
+              _Tile(icon: Icons.privacy_tip_outlined, paletteIdx: 0, title: 'Kebijakan Privasi', subtitle: 'Cara aplikasi menangani data Anda', onTap: () => _openPrivacy(context)),
             ]),
           ),
           const SizedBox(height: 24),
@@ -200,7 +203,6 @@ class MoreScreen extends StatelessWidget {
               for (final e in const [
                 ('id.indonesian', 'Bahasa Indonesia (Kemenag)'),
                 ('en.sahih', 'English — Saheeh International'),
-                ('en.arberry', 'English — Arberry'),
               ])
                 RadioListTile<String>(
                   value: e.$1,
@@ -213,6 +215,20 @@ class MoreScreen extends StatelessWidget {
     );
   }
 
+  /// Opens the privacy policy — in the browser on mobile, in-page on web.
+  void _openPrivacy(BuildContext context) async {
+    final ok = await launchUrl(
+      Uri.parse(privacyUrl),
+      mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication,
+      webOnlyWindowName: kIsWeb ? '_blank' : null,
+    );
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak dapat membuka kebijakan privasi')),
+      );
+    }
+  }
+
   void _about(BuildContext context) {
     showAboutDialog(
       context: context,
@@ -223,12 +239,12 @@ class MoreScreen extends StatelessWidget {
         SizedBox(height: 8),
         Text('Aplikasi Qur\'an lengkap dengan teks Uthmani yang tertanam (embedded), terjemahan, tafsir, kiblat, doa, tasbih, dan pemutar murottal.\n'),
         Text('Sumber data:', style: TextStyle(fontWeight: FontWeight.bold)),
-        Text('• Teks Arab: Tanzil / Al-Qur\'an Cloud (Uthmani)'),
-        Text('• Terjemahan: Kemenag (id), Saheeh International & Arberry (en)'),
+        Text('• Teks Arab: Tanzil Project (Uthmani) — CC BY 3.0'),
+        Text('• Terjemahan: Kemenag (id), Saheeh International (en)'),
         Text('• Tafsir: Jalalayn'),
-        Text('• Audio murottal: mp3quran.net, islamic.network, everyayah.com'),
+        Text('• Audio murottal: mp3quran.net, islamic.network'),
         Text('• Doa & dzikir: Hisnul Muslim'),
-        Text('• Waktu shalat: adhan (batoulapps)'),
+        Text('• Waktu shalat: adhan (batoulapps) — MIT'),
       ],
     );
   }

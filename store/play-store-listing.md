@@ -13,7 +13,7 @@ tertanam langsung di dalam aplikasi sehingga bisa dibaca kapan saja tanpa koneks
 
 **📖 AL-QUR'AN LENGKAP (OFFLINE)**
 • Teks Arab Uthmani asli — 114 surah, 6.236 ayat, tanpa perubahan sedikit pun
-• Terjemahan Bahasa Indonesia (Kemenag) & Inggris (Saheeh International, Arberry)
+• Terjemahan Bahasa Indonesia (Kemenag) & Inggris (Saheeh International)
 • Tafsir Jalalayn lengkap
 • Tandai ayat (bookmark), lanjutkan bacaan terakhir, gulir otomatis saat diputar
 • Ukuran huruf Arab dapat diatur, 3 pilihan khat (Amiri Quran, Amiri, Scheherazade)
@@ -60,7 +60,7 @@ Books & Reference
 Quran, Islam, Muslim, Murottal, Prayer Times, Qibla, Dua, Tasbih, Tafsir
 
 ## Contact email
-darrenlieu@example.com
+triadisetiawan19@gmail.com
 
 ## Privacy policy URL
-https://noor-quran.vercel.app/privacy-policy.html
+https://noor-quran-wheat.vercel.app/privacy-policy.html

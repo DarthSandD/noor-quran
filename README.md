@@ -64,17 +64,20 @@ crescent and star), including Android adaptive-icon foregrounds.
 
 | File                 | Size  | Source                                                           |
 | -------------------- | ----- | ---------------------------------------------------------------- |
-| `quran.json`         | 1.6 M | Al-Quran Cloud — Uthmani, with name translations from quran.com  |
+| `quran.json`         | 1.6 M | Tanzil Project — Uthmani text (CC BY 3.0), verbatim & unmodified  |
 | `t_id.json`          | 1.1 M | id.indonesian (Kemenag)                                          |
 | `t_en.json`          | 0.9 M | en.sahih (Saheeh International)                                   |
-| `t_en_arberry.json`  | 0.8 M | en.arberry                                                       |
 | `tafsir_id.json`     | 2.7 M | id.jalalayn (Tafsir Jalalayn)                                    |
 | `asma.json`          | 28 K  | 99 Names of Allah + adiman-dev explanations                      |
 | `duas.json`          | 244 K | Hisnul Muslim — 367 duas across 7 segments                      |
 | `reciters.json`      | 158 K | mp3quran.net reciter catalog (242) + 177 radios                  |
 | `ayah_reciters.json` | 1 K   | 16 verified verse-by-verse reciters on islamic.network           |
 
-Arabic + 3 translations + tafsir + duas + asma + reciters ≈ **7.6 MB**.
+Arabic + 2 translations + tafsir + duas + asma + reciters ≈ **6.8 MB**.
+
+> **Note on editions:** the A. J. Arberry English translation was removed before
+> public release because it remains in copyright. Only freely-redistributable
+> editions ship.
 
 ---
 
