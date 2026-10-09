@@ -72,3 +72,6 @@ android/.idea/# QA scratch
 _quran.bak.json
 store/qa/
 store/shots/
+
+# throwaway deploy scaffolding
+_dlhost/
