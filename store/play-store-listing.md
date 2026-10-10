@@ -1,10 +1,10 @@
 # Noor Qur'an — Play Store Listing
 
-## App name
-Noor Qur'an — Al-Qur'an & Murottal
+## App name (30 chars max)
+Noor Qur'an: Qur'an & Murottal
 
 ## Short description (80 chars max)
-Qur'an lengkap: terjemahan, tafsir, kiblat, doa, tasbih & murottal streaming + YouTube.
+Qur'an lengkap: terjemahan, tafsir, kiblat, doa, tasbih & murottal streaming.
 
 ## Full description (4000 chars max)
 
