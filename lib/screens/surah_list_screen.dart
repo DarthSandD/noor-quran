@@ -224,15 +224,8 @@ class _SurahTile extends StatelessWidget {
                   border: Border.all(color: ink.withValues(alpha: 0.28)),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      surah.name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 22, height: 1.0, color: ink),
-                    ),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                  child: CenteredArabicText(text: surah.name, fontSize: 22, color: ink),
                 ),
               ),
             ],

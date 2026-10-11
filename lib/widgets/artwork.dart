@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -324,7 +325,9 @@ class _StarBadgePainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
+    // Centre on the ink, not the line box, so the number sits true in the star.
+    final ink = _tightInk(tp, '$number');
+    tp.paint(canvas, Offset(c.dx - ink.center.dx, c.dy - ink.center.dy));
   }
 
   /// Eight-pointed star: two squares rotated 45° apart.
@@ -343,4 +346,90 @@ class _StarBadgePainter extends CustomPainter {
   @override
   bool shouldRepaint(_StarBadgePainter old) =>
       old.fill != fill || old.stroke != stroke || old.numberColor != numberColor || old.number != number || old.solid != solid;
+}
+
+/// The tight ink rectangle of a laid-out single line of text.
+///
+/// Flutter centres a `Text` on its *line box*, but Arabic fonts carry a tall
+/// ascent to make room for diacritics, so the line box is far taller than the
+/// letters themselves and the glyphs read as sunk to the bottom of it.
+/// `BoxHeightStyle.tight` reports the real painted bounds — the thing we
+/// actually want to centre on.
+Rect _tightInk(TextPainter tp, String text) {
+  final boxes = tp.getBoxesForSelection(
+    TextSelection(baseOffset: 0, extentOffset: text.length),
+    boxHeightStyle: ui.BoxHeightStyle.tight,
+    boxWidthStyle: ui.BoxWidthStyle.tight,
+  );
+  if (boxes.isEmpty) return Rect.fromLTWH(0, 0, tp.width, tp.height);
+  var l = double.infinity, t = double.infinity, r = -double.infinity, b = -double.infinity;
+  for (final box in boxes) {
+    l = math.min(l, box.left);
+    t = math.min(t, box.top);
+    r = math.max(r, box.right);
+    b = math.max(b, box.bottom);
+  }
+  return Rect.fromLTRB(l, t, r, b);
+}
+
+/// Arabic text painted dead-centre on its own ink inside whatever box it is
+/// given — so every word sits concentric with its plate, whatever diacritics it
+/// carries and whatever its natural line box happens to be.
+class CenteredArabicText extends StatelessWidget {
+  const CenteredArabicText({
+    super.key,
+    required this.text,
+    required this.fontSize,
+    required this.color,
+  });
+
+  final String text;
+  final double fontSize;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        size: Size.infinite,
+        painter: _CenteredArabicPainter(text: text, fontSize: fontSize, color: color),
+      );
+}
+
+class _CenteredArabicPainter extends CustomPainter {
+  _CenteredArabicPainter({required this.text, required this.fontSize, required this.color});
+
+  final String text;
+  final double fontSize;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontFamily: 'AmiriQuran', fontSize: fontSize, color: color, height: 1.0),
+      ),
+      textDirection: TextDirection.rtl,
+      maxLines: 1,
+    )..layout();
+
+    final ink = _tightInk(tp, text);
+    if (ink.width <= 0 || ink.height <= 0) return;
+
+    // Shrink to fit the box, never enlarge.
+    final scale = math.min(1.0, math.min(size.width / ink.width, size.height / ink.height));
+
+    canvas.save();
+    canvas.translate(
+      (size.width - ink.width * scale) / 2 - ink.left * scale,
+      (size.height - ink.height * scale) / 2 - ink.top * scale,
+    );
+    canvas.scale(scale);
+    tp.paint(canvas, Offset.zero);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_CenteredArabicPainter old) =>
+      old.text != text || old.fontSize != fontSize || old.color != color;
 }
