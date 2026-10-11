@@ -177,7 +177,7 @@ class ReciterScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(s.transliteration,
-                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: isCurrent ? palette.mid : null)),
+                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: isCurrent ? accentInk(theme.colorScheme, palette) : null)),
                               const SizedBox(height: 2),
                               Text('${s.ayahCount} ayat • ${s.revelation == 'Meccan' ? 'Makkiyah' : 'Madaniyah'}',
                                   style: const TextStyle(fontSize: 11.5)),
@@ -185,11 +185,11 @@ class ReciterScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(s.name, style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 21, height: 1.0, color: isDark ? palette.accent : Color.lerp(palette.deep, Colors.black, 0.35))),
+                        Text(s.name, style: TextStyle(fontFamily: 'AmiriQuran', fontSize: 21, height: 1.0, color: accentInk(theme.colorScheme, palette))),
                         const SizedBox(width: 6),
                         Icon(
                           isCurrent && audio.playing ? Icons.equalizer_rounded : Icons.play_arrow_rounded,
-                          color: isCurrent ? palette.mid : theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                          color: isCurrent ? accentInk(theme.colorScheme, palette) : theme.colorScheme.onSurface.withValues(alpha: 0.35),
                           size: 20,
                         ),
                       ],

@@ -41,6 +41,20 @@ ArtPalette paletteFor(int surahNumber, {int? juz}) {
   return kArtPalettes[seed % kArtPalettes.length];
 }
 
+/// A legible version of a palette's accent for the *current* surface.
+///
+/// The accents are bright pastels, chosen to glow against the dark cover art.
+/// Used directly as text or a border on a light surface they all but vanish —
+/// which is what made palette-tinted labels hard to read in light mode. This
+/// returns a darkened ink in light mode and the bright accent in dark mode, so
+/// every palette-tinted badge, chip and plate stays readable either way.
+Color accentInk(ColorScheme scheme, ArtPalette palette) {
+  if (scheme.brightness == Brightness.dark) return palette.accent;
+  // Walk the accent toward the palette's own deep hue: the tint survives, the
+  // contrast becomes real (all `deep` tones are dark enough for white paper).
+  return Color.lerp(palette.deep, palette.accent, 0.22)!;
+}
+
 /// Generated artwork for a surah: a rich gradient, a Khatam (eight-point star)
 /// lattice, a soft light bloom and a hairline rim. Deterministic, crisp at any
 /// size, and completely asset-free.
@@ -237,15 +251,18 @@ class SurahStarBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final palette = paletteFor(number, juz: juz);
+    // Contrast-aware: a light pastel accent would vanish on a light card.
+    final ink = accentInk(scheme, palette);
     return SizedBox(
       width: size,
       height: size,
       child: CustomPaint(
         painter: _StarBadgePainter(
-          fill: solid ? palette.mid : palette.mid.withValues(alpha: 0.14),
-          stroke: solid ? palette.accent.withValues(alpha: 0.6) : palette.accent,
-          numberColor: solid ? Colors.white : palette.accent,
+          fill: solid ? palette.mid : ink.withValues(alpha: 0.12),
+          stroke: solid ? palette.accent.withValues(alpha: 0.6) : ink,
+          numberColor: solid ? Colors.white : ink,
           number: number,
           solid: solid,
         ),
